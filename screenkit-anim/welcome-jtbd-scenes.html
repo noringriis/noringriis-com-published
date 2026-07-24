@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driversnote Welcome JTBD Scenes</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="phone-mockup.css">
+  <link rel="stylesheet" href="tailwind.built.css">
+
+  <style>
+    html:has(body.is-preview) {
+      overflow-y: hidden !important;
+    }
+    body.is-preview {
+      margin: 0;
+      background: transparent;
+      overflow-y: hidden !important;
+      --phone-w: 230px;
+      --gap: 32px;
+      --pad-y: 40px;
+      --pad-x: 40px;
+    }
+    body.is-preview > nav,
+    body.is-preview > header,
+    body.is-preview > section { display: none !important; }
+    body.is-preview .scene-caption { display: none !important; }
+    body.is-preview > main {
+      padding: var(--pad-y) var(--pad-x) !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      scroll-snap-type: x proximity;
+      -webkit-overflow-scrolling: touch;
+    }
+    body.is-preview > main > #scenes-ribbon {
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      gap: var(--gap);
+      flex: 0 0 auto;
+      margin-top: -12px;
+    }
+    body.is-preview > main .bg-mist {
+      background: transparent !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+    }
+    body.is-preview .dn-mockup--framed {
+      width: var(--phone-w) !important;
+      scroll-snap-align: center;
+    }
+    @media (max-width: 1023px) {
+      body.is-preview { --phone-w: 260px; --gap: 24px; --pad-x: 32px; }
+    }
+    @media (max-width: 767px) {
+      body.is-preview {
+        --phone-w: 260px;
+        --gap: 20px;
+        --pad-x: 20px;
+        --pad-y: 24px;
+      }
+      body.is-preview > main {
+        justify-content: flex-start;
+        align-items: flex-start;
+      }
+      body.is-preview .dn-mockup--framed { scroll-snap-align: start; }
+    }
+  </style>
+  <script>
+    if (new URLSearchParams(window.location.search).get('preview') === '1') {
+      document.addEventListener('DOMContentLoaded', function () {
+        document.body.classList.add('is-preview');
+      });
+    }
+  </script>
+
+  <style>
+    :root {
+      --demo-bezel-bg:       rgba(255, 255, 255, 0.12);
+      --demo-bezel-filter:   blur(20px) saturate(180%);
+      --demo-bezel-border:   1px solid rgba(255, 255, 255, 0.25);
+      --demo-bezel-padding:  calc(100cqi * 8 / 390);
+      --demo-bezel-rim:      inset 0 1px 0 rgba(255,255,255,0.60), inset 0 -1px 0 rgba(255,255,255,0.10);
+      --demo-refraction:     linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.08) 100%);
+      --demo-shadow-outer:   0 8px 24px rgba(0,0,0,0.18);
+    }
+    body .dn-mockup--framed .dn-mockup__bezel {
+      background:              var(--demo-bezel-bg)      !important;
+      border:                  var(--demo-bezel-border)  !important;
+      padding:                 var(--demo-bezel-padding) !important;
+      box-shadow:              var(--demo-shadow-outer), var(--demo-bezel-rim) !important;
+    }
+    body .dn-mockup--framed .dn-mockup__bezel::before {
+      background: var(--demo-refraction) !important;
+    }
+
+    .dn-mockup__screen {
+      background-color: var(--dn-color-bg-screen);
+    }
+
+    /* Each phone is its own scene, always visible (no scene switching). */
+    .dn-mockup__stage { opacity: 1; }
+
+    /* ── Horizontal ribbon layout (matches android-permissions) ───── */
+    .scene-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .scene-caption {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      color: #707070;
+    }
+    /* Hide the native scrollbar; drag-to-pan handles horizontal motion. */
+    #scenes-main {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    #scenes-main::-webkit-scrollbar { display: none; }
+
+    /* ── Scene 2 (Inbox) styles ───────────────────────────────────── */
+    #scene-inbox-viewport {
+      position: absolute;
+      top: 114px;
+      left: 0;
+      right: 0;
+      bottom: 83px;
+      overflow: hidden;
+    }
+    #scene-inbox-list {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    #scene-inbox-list .dn-mockup__trip-card-large {
+      animation: none;
+      opacity: 0;
+      transform: translateY(8px);
+      transition:
+        opacity       0.55s ease,
+        transform     0.55s ease,
+        margin-bottom 0.55s ease 0.4s,
+        max-height    0.55s ease 0.4s;
+      transition-delay: calc(var(--card-index, 0) * 60ms);
+      max-height: 600px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    #scene-inbox.is-mounted #scene-inbox-list .dn-mockup__trip-card-large {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #scene-inbox.is-mounted #scene-inbox-list .dn-mockup__trip-card-large.is-reviewed {
+      transition-delay: 0s;
+      opacity: 0;
+      transform: translateY(-8px);
+      max-height: 0;
+      margin-bottom: 0;
+      pointer-events: none;
+    }
+    #scene-inbox-list .anim-recategorising .dn-mockup__category-option[data-active="true"] {
+      transition: color 0.35s ease, background-color 0.35s ease;
+    }
+    @keyframes anim-chip-pulse {
+      0%   { transform: scale(1); }
+      45%  { transform: scale(0.94); }
+      100% { transform: scale(1); }
+    }
+    #scene-inbox-list .dn-mockup__category-option.anim-pulse {
+      animation: anim-chip-pulse 380ms cubic-bezier(0.34, 1.1, 0.64, 1);
+      transform-origin: center;
+    }
+    @keyframes anim-btn-pulse {
+      0%   { transform: scale(1);    filter: brightness(1); }
+      40%  { transform: scale(0.97); filter: brightness(0.92); }
+      100% { transform: scale(1);    filter: brightness(1); }
+    }
+    #scene-inbox-list .dn-mockup__btn-review {
+      position: relative;
+      overflow: hidden;
+    }
+    #scene-inbox-list .dn-mockup__btn-review.anim-pulse {
+      animation: anim-btn-pulse 260ms ease-out;
+      transform-origin: center;
+    }
+    @keyframes anim-tap-ripple {
+      0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0.65; }
+      100% { transform: translate(-50%, -50%) scale(3);   opacity: 0; }
+    }
+    #scene-inbox-list .dn-mockup__btn-review.anim-tap::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.55);
+      pointer-events: none;
+      animation: anim-tap-ripple 500ms ease-out forwards;
+    }
+    @keyframes anim-count-tick {
+      0%   { transform: scale(1);    color: inherit; }
+      40%  { transform: scale(1.18); color: var(--dn-color-brand); }
+      100% { transform: scale(1);    color: inherit; }
+    }
+    #anim-inbox-count.anim-tick {
+      animation: anim-count-tick 360ms ease-out;
+      transform-origin: center;
+    }
+
+    /* ── Scene 3 (Report) ─────────────────────────────────────────── */
+    #scene-report .dn-mockup__report-scroll {
+      transition: transform 1.2s cubic-bezier(0.32, 0.72, 0.32, 1);
+      will-change: transform;
+    }
+    #anim-send-icon {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.18s ease;
+      cursor: default;
+    }
+    #anim-send-icon.is-tapped { opacity: 0.65; }
+    #anim-send-icon.anim-tap::after,
+    #scene-modal .dn-mockup__modal-btn-send.anim-tap::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.55);
+      pointer-events: none;
+      animation: anim-tap-ripple 500ms ease-out forwards;
+    }
+    #scene-modal .dn-mockup__modal-btn-send {
+      position: relative;
+      overflow: hidden;
+    }
+    #scene-modal .dn-mockup__modal-btn-send.anim-tap::after {
+      width: 44px;
+      height: 44px;
+    }
+
+    /* ── Scene 4 (Send modal) ─────────────────────────────────────── */
+    #scene-modal {
+      position: absolute;
+      inset: 0;
+      width: 390px;
+      height: 844px;
+      transform-origin: top left;
+      transform: scale(calc(100cqi / 390px));
+      pointer-events: none;
+      z-index: 30;
+    }
+    #scene-modal .dn-mockup__modal-overlay {
+      opacity: 0;
+      background: rgba(0, 0, 0, 0);
+      transition: background-color 0.35s ease, opacity 0.35s ease;
+    }
+    #scene-modal.is-modal-visible .dn-mockup__modal-overlay {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    #scene-modal .dn-mockup__modal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.34, 1.1, 0.64, 1);
+    }
+    #scene-modal.is-modal-visible .dn-mockup__modal {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #scene-modal.is-modal-exiting .dn-mockup__modal {
+      opacity: 0;
+      transform: translateY(0);
+      transition: opacity 0.4s ease;
+    }
+    #scene-modal.is-modal-exiting .dn-mockup__modal-overlay {
+      opacity: 0;
+      background: rgba(0, 0, 0, 0);
+      transition: background-color 0.4s ease 0.1s, opacity 0.4s ease 0.1s;
+    }
+    #scene-modal .anim-typed-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 14px;
+      color: var(--dn-color-content-primary);
+    }
+    #scene-modal .dn-mockup__modal-textarea .anim-typed-wrap {
+      align-items: flex-start;
+      padding: 0;
+      position: static;
+    }
+    #scene-modal .anim-cursor {
+      color: var(--dn-color-brand);
+      animation: anim-blink 0.75s step-end infinite;
+      margin-left: 1px;
+      display: none;
+    }
+    #scene-modal .anim-field-active .anim-cursor { display: inline; }
+    @keyframes anim-blink {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0; }
+    }
+    #scene-modal .dn-mockup__modal-input,
+    #scene-modal .dn-mockup__modal-textarea {
+      position: relative;
+      transition: border-color 0.2s ease, border-width 0.2s ease;
+    }
+    #scene-modal .anim-field-active.dn-mockup__modal-input,
+    #scene-modal .anim-field-active.dn-mockup__modal-textarea {
+      border: 2px solid var(--dn-color-primary);
+    }
+    #scene-modal .anim-field-active .dn-mockup__modal-textarea-placeholder,
+    #scene-modal .anim-field-filled .dn-mockup__modal-textarea-placeholder {
+      opacity: 0;
+    }
+    #scene-modal .dn-mockup__modal-btn-send {
+      transition: opacity 0.15s ease;
+    }
+    #scene-modal .dn-mockup__modal-btn-send.is-pressed { opacity: 0.8; }
+
+    /* ── Reduced motion: hold static posters ──────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      .dn-mockup__stage { opacity: 1 !important; }
+    }
+
+    /* ── Playback controls (matches welcome / hero pattern) ──────── */
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 7px 16px;
+      border-radius: 9999px;
+      border: 1px solid var(--color-graphite);
+      background: transparent;
+      color: var(--color-midnight-forest);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+    .ctrl-btn:hover {
+      background: var(--color-mist);
+      border-color: var(--color-midnight-forest);
+    }
+    .anim-progress-track {
+      width: 600px;
+      height: 4px;
+      background: var(--color-slate-shadow);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+    .anim-progress-fill {
+      height: 100%;
+      background: var(--color-midnight-forest);
+      border-radius: inherit;
+      width: 0%;
+    }
+    .anim-scene-labels {
+      width: 600px;
+      display: flex;
+      margin-top: 7px;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      color: var(--color-graphite);
+    }
+    .anim-scene-labels span { flex: 1; text-align: center; }
+  </style>
+</head>
+<body class="font-sans bg-pure-canvas text-midnight-forest min-h-screen">
+
+  <nav class="bg-pure-canvas">
+    <div class="grid grid-cols-3 items-center px-20 h-20 max-w-[1600px] mx-auto">
+      <a href="../library.html" class="flex items-center" aria-label="Driversnote">
+        <img src="../assets/logo.svg" alt="Driversnote" class="size-10" />
+      </a>
+      <div class="flex items-center justify-center gap-[32px] text-base font-semibold">
+        <a href="../library.html" class="text-ash hover:text-midnight-forest transition-colors duration-150">Mockups</a>
+        <a href="../animation.html" class="text-midnight-forest">Animations</a>
+      </div>
+      <div class="flex justify-end">
+        <a href="../map-route-editor-v2.html"
+           class="group relative inline-flex items-center justify-center size-8"
+           aria-label="Routes">
+          <img src="../assets/route-icon.svg" alt="" class="size-8" />
+          <span class="pointer-events-none absolute top-full left-1/2 mt-3
+                       flex items-center h-7 px-2 rounded-lg
+                       bg-midnight-forest text-pure-canvas text-xs font-semibold whitespace-nowrap
+                       opacity-0 -translate-x-1/2
+                       transition-opacity duration-200 ease-out
+                       group-hover:opacity-100">Routes</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="bg-pure-canvas">
+    <div class="flex items-center justify-between gap-4 px-20 pt-10 pb-3 max-w-[1600px] mx-auto">
+      <div class="flex items-center">
+        <div class="flex items-center gap-2">
+          <div class="relative" id="frame-dropdown">
+            <button type="button" id="frame-trigger" class="dropdown-trigger">
+              <span id="frame-current">Device</span>
+              <svg id="frame-chevron" class="size-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path fill="currentColor" d="M12 14.975C11.8667 14.975 11.7417 14.9542 11.625 14.9125C11.5084 14.8709 11.4 14.8 11.3 14.7L6.70005 10.1C6.51672 9.91672 6.42505 9.68338 6.42505 9.40005C6.42505 9.11672 6.51672 8.88338 6.70005 8.70005C6.88338 8.51672 7.11672 8.42505 7.40005 8.42505C7.68338 8.42505 7.91672 8.51672 8.10005 8.70005L12 12.6L15.9 8.70005C16.0834 8.51672 16.3167 8.42505 16.6 8.42505C16.8834 8.42505 17.1167 8.51672 17.3 8.70005C17.4834 8.88338 17.575 9.11672 17.575 9.40005C17.575 9.68338 17.4834 9.91672 17.3 10.1L12.7 14.7C12.6 14.8 12.4917 14.8709 12.375 14.9125C12.2584 14.9542 12.1334 14.975 12 14.975Z"/>
+              </svg>
+            </button>
+            <ul id="frame-menu" class="hidden absolute top-full left-0 mt-2 z-50 min-w-full py-2 bg-glass-bg backdrop-blur-[24px] backdrop-saturate-150 rounded-2xl shadow-[0_12px_80px_rgba(0,0,0,0.16)] whitespace-nowrap"></ul>
+          </div>
+          <div class="relative" id="shadow-dropdown">
+            <button type="button" id="shadow-trigger" class="dropdown-trigger">
+              <span id="shadow-current">Shadow</span>
+              <svg id="shadow-chevron" class="size-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path fill="currentColor" d="M12 14.975C11.8667 14.975 11.7417 14.9542 11.625 14.9125C11.5084 14.8709 11.4 14.8 11.3 14.7L6.70005 10.1C6.51672 9.91672 6.42505 9.68338 6.42505 9.40005C6.42505 9.11672 6.51672 8.88338 6.70005 8.70005C6.88338 8.51672 7.11672 8.42505 7.40005 8.42505C7.68338 8.42505 7.91672 8.51672 8.10005 8.70005L12 12.6L15.9 8.70005C16.0834 8.51672 16.3167 8.42505 16.6 8.42505C16.8834 8.42505 17.1167 8.51672 17.3 8.70005C17.4834 8.88338 17.575 9.11672 17.575 9.40005C17.575 9.68338 17.4834 9.91672 17.3 10.1L12.7 14.7C12.6 14.8 12.4917 14.8709 12.375 14.9125C12.2584 14.9542 12.1334 14.975 12 14.975Z"/>
+              </svg>
+            </button>
+            <ul id="shadow-menu" class="hidden absolute top-full left-0 mt-2 z-50 min-w-full py-2 bg-glass-bg backdrop-blur-[24px] backdrop-saturate-150 rounded-2xl shadow-[0_12px_80px_rgba(0,0,0,0.16)] whitespace-nowrap"></ul>
+          </div>
+        </div>
+        <div class="w-px h-9 bg-fog mx-6"></div>
+        <div class="relative" id="locale-dropdown">
+          <button type="button" id="locale-trigger" class="dropdown-trigger">
+            <span id="locale-current">en-US</span>
+            <svg id="locale-chevron" class="size-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path fill="currentColor" d="M12 14.975C11.8667 14.975 11.7417 14.9542 11.625 14.9125C11.5084 14.8709 11.4 14.8 11.3 14.7L6.70005 10.1C6.51672 9.91672 6.42505 9.68338 6.42505 9.40005C6.42505 9.11672 6.51672 8.88338 6.70005 8.70005C6.88338 8.51672 7.11672 8.42505 7.40005 8.42505C7.68338 8.42505 7.91672 8.51672 8.10005 8.70005L12 12.6L15.9 8.70005C16.0834 8.51672 16.3167 8.42505 16.6 8.42505C16.8834 8.42505 17.1167 8.51672 17.3 8.70005C17.4834 8.88338 17.575 9.11672 17.575 9.40005C17.575 9.68338 17.4834 9.91672 17.3 10.1L12.7 14.7C12.6 14.8 12.4917 14.8709 12.375 14.9125C12.2584 14.9542 12.1334 14.975 12 14.975Z"/>
+            </svg>
+          </button>
+          <ul id="locale-menu" class="hidden absolute top-full left-0 mt-2 z-50 min-w-full py-2 bg-glass-bg backdrop-blur-[24px] backdrop-saturate-150 rounded-2xl shadow-[0_12px_80px_rgba(0,0,0,0.16)] whitespace-nowrap"></ul>
+        </div>
+      </div>
+
+      <div class="flex items-center">
+        <a id="scenes-download-zip" href="/export-welcome-scenes"
+           class="inline-flex items-center h-[34px] px-3 rounded-full
+                  border border-ash text-midnight-forest text-sm font-semibold
+                  hover:border-midnight-forest hover:bg-mist
+                  transition-colors duration-150 cursor-pointer outline-none">
+          Download ZIP
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="scenes-main" class="overflow-x-auto cursor-grab select-none pt-10 pb-10">
+
+    <div id="scenes-ribbon" class="flex items-start gap-5 pr-20"
+         style="padding-left: max(80px, calc((100vw - 1600px) / 2 + 80px));">
+
+        <!-- ══════════ Scene 1 · Tracking ══════════ -->
+        <div class="scene-cell shrink-0">
+          <div class="bg-mist rounded-3xl py-10 px-20 flex items-center justify-center">
+          <div class="dn-mockup dn-mockup--framed" id="phone-tracking" style="width:393px">
+            <div class="dn-mockup__bezel">
+              <div class="dn-mockup__screen">
+                <div class="dn-mockup__stage" id="scene-tracking"></div>
+              </div>
+            </div>
+          </div>
+          </div>
+          <span class="scene-caption">Tracking</span>
+        </div>
+
+        <!-- ══════════ Scene 2 · Inbox ══════════ -->
+        <div class="scene-cell shrink-0">
+          <div class="bg-mist rounded-3xl py-10 px-20 flex items-center justify-center">
+          <div class="dn-mockup dn-mockup--framed" id="phone-inbox" style="width:393px">
+            <div class="dn-mockup__bezel">
+              <div class="dn-mockup__screen">
+                <div class="dn-mockup__stage" id="scene-inbox">
+                  <div class="dn-mockup__status-bar" aria-hidden="true">
+                    <span class="dn-mockup__status-time">9:15</span>
+                    <div class="dn-mockup__dynamic-island"></div>
+                    <div class="dn-mockup__status-icons">
+                      <svg class="dn-mockup__icon-cellular" aria-hidden="true" focusable="false"><use href="#dn-icon-cellular"/></svg>
+                      <svg class="dn-mockup__icon-wifi"     aria-hidden="true" focusable="false"><use href="#dn-icon-wifi"/></svg>
+                      <svg class="dn-mockup__icon-battery"  aria-hidden="true" focusable="false"><use href="#dn-icon-battery"/></svg>
+                    </div>
+                  </div>
+                  <div class="dn-mockup__inbox-header-top">
+                    <div class="dn-mockup__inbox-controls">
+                      <div class="dn-mockup__auto-track">
+                        <div class="dn-mockup__toggle" aria-hidden="true">
+                          <svg class="dn-mockup__toggle-check" aria-hidden="true" focusable="false"><use href="#dn-icon-check"/></svg>
+                        </div>
+                        <span class="dn-mockup__toggle-label" data-l="strings.auto_track">Auto-track</span>
+                      </div>
+                      <span class="dn-mockup__configure-btn" data-l="strings.configure">Configure</span>
+                    </div>
+                  </div>
+                  <div class="dn-mockup__inbox-title-row">
+                    <div class="dn-mockup__inbox-title-inner">
+                      <span class="dn-mockup__inbox-title" data-l="strings.inbox">Inbox</span>
+                      <span class="dn-mockup__inbox-count" id="anim-inbox-count">8</span>
+                      <span class="dn-mockup__review-all" data-l="strings.review_all">Review all</span>
+                    </div>
+                  </div>
+                  <div id="scene-inbox-viewport">
+                    <div id="scene-inbox-list"></div>
+                  </div>
+                  <nav class="dn-mockup__nav-bar" aria-label="Main navigation">
+                    <div class="dn-mockup__nav-tabs">
+                      <div class="dn-mockup__nav-tab" data-tab="inbox" data-active="true">
+                        <svg class="dn-mockup__nav-tab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-inbox-active"/></svg>
+                        <span class="dn-mockup__nav-tab-label" data-l="strings.inbox">Inbox</span>
+                      </div>
+                      <div class="dn-mockup__nav-tab" data-tab="all-trips">
+                        <svg class="dn-mockup__nav-tab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-trips"/></svg>
+                        <span class="dn-mockup__nav-tab-label" data-l="strings.all_trips">All trips</span>
+                      </div>
+                      <div class="dn-mockup__nav-fab-spacer" aria-hidden="true"></div>
+                      <div class="dn-mockup__nav-tab dn-mockup__nav-tab--reports" data-tab="reports">
+                        <svg class="dn-mockup__nav-tab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-reports"/></svg>
+                        <span class="dn-mockup__nav-tab-label" data-l="strings.reports">Reports</span>
+                      </div>
+                      <div class="dn-mockup__nav-tab dn-mockup__nav-tab--settings" data-tab="settings">
+                        <svg class="dn-mockup__nav-tab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-settings"/></svg>
+                        <span class="dn-mockup__nav-tab-label" data-l="strings.settings">Settings</span>
+                      </div>
+                    </div>
+                    <div class="dn-mockup__nav-fab" aria-hidden="true">
+                      <svg class="dn-mockup__nav-fab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-fab"/></svg>
+                    </div>
+                  </nav>
+                  <div class="dn-mockup__home-indicator" aria-hidden="true">
+                    <div class="dn-mockup__home-bar"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          </div>
+          <span class="scene-caption">Inbox</span>
+        </div>
+
+        <!-- ══════════ Scene 3 · Report & Send (combined) ══════════ -->
+        <div class="scene-cell shrink-0">
+          <div class="bg-mist rounded-3xl py-10 px-20 flex items-center justify-center">
+          <div class="dn-mockup dn-mockup--framed" id="phone-report" style="width:393px">
+            <div class="dn-mockup__bezel">
+              <div class="dn-mockup__screen">
+                <div class="dn-mockup__stage" id="scene-report"></div>
+                <div id="scene-modal"></div>
+              </div>
+            </div>
+          </div>
+          </div>
+          <span class="scene-caption">Report &amp; send</span>
+        </div>
+
+    </div>
+  </main>
+
+  <section id="scenes-controls" class="flex flex-col items-center pb-20">
+    <div class="flex items-center gap-3 mt-9">
+      <button id="ctrl-playpause" class="ctrl-btn">
+        <svg id="ctrl-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+          <rect x="1.5" y="1.5" width="3.5" height="9" rx="1"/>
+          <rect x="7"   y="1.5" width="3.5" height="9" rx="1"/>
+        </svg>
+        <span id="ctrl-label">Pause</span>
+      </button>
+      <button id="ctrl-restart" class="ctrl-btn">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 6a4 4 0 1 0 .7-2.3"/>
+          <polyline points="0.5,2 2.5,3.8 2.5,1.5"/>
+        </svg>
+        Restart
+      </button>
+    </div>
+
+    <div class="anim-progress-track" id="anim-progress-track">
+      <div class="anim-progress-fill" id="anim-progress-fill"></div>
+    </div>
+
+    <div class="anim-scene-labels">
+      <span>Tracking</span>
+      <span>Inbox</span>
+      <span>Report &amp; send</span>
+    </div>
+
+  </section>
+
+  <script src="mockup-locales.js"></script>
+  <script src="frame-presets.js"></script>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // ── Locale resolution ─────────────────────────────────────────
+      function resolveLocale() {
+        if (window.__DN_LOCALE__ && DN_LOCALES[window.__DN_LOCALE__]) return window.__DN_LOCALE__;
+        var qp = new URLSearchParams(window.location.search).get('locale');
+        if (qp && DN_LOCALES[qp]) return qp;
+        return 'en-US';
+      }
+      var currentLocale = resolveLocale();
+
+      var SEND_REPORT_DEFAULTS = {
+        'en-US': { name: 'Alex Morgan',      recipient: 'accounting@company.com',       note: "I've cleaned up the report" },
+        'en-GB': { name: 'James Carter',     recipient: 'accounts@company.co.uk',       note: "I've cleaned up the report" },
+        'en-AU': { name: 'Lachlan Mitchell', recipient: 'accounts@company.com.au',      note: "I've cleaned up the report" },
+        'en-CA': { name: 'Jordan Whitfield', recipient: 'accounting@company.ca',        note: "I've cleaned up the report" },
+        'da-DK': { name: 'Mette Larsen',     recipient: 'regnskab@firma.dk',            note: 'Jeg har ryddet op i rapporten' },
+        'de-DE': { name: 'Lukas Müller',     recipient: 'buchhaltung@firma.de',         note: 'Ich habe den Bericht aktualisiert' },
+        'fr-FR': { name: 'Camille Dubois',   recipient: 'comptabilite@entreprise.fr',   note: "J'ai mis à jour le rapport" },
+        'nl-NL': { name: 'Sanne van Dijk',   recipient: 'boekhouding@bedrijf.nl',       note: 'Ik heb het rapport bijgewerkt' },
+        'sv-SE': { name: 'Erik Lindberg',    recipient: 'ekonomi@foretag.se',           note: 'Jag har uppdaterat rapporten' },
+      };
+
+      // ── Per-scene timer registries so loops can pause/restart cleanly ──
+      var timersInbox  = [];
+      var timersReport = [];
+      var timersModal  = [];
+      function scheduleIn(reg, fn, delay) { var id = setTimeout(fn, delay); reg.push(id); return id; }
+      function clearReg(reg) { reg.forEach(function (id) { clearTimeout(id); }); reg.length = 0; }
+      function clearAllTimers() { clearReg(timersInbox); clearReg(timersReport); clearReg(timersModal); }
+
+      // ── Locale text + asset path helpers ──────────────────────────
+      function getByPath(obj, path) {
+        return path.split('.').reduce(function (acc, k) { return acc != null ? acc[k] : undefined; }, obj);
+      }
+      function applyLocale(root) {
+        var locale = DN_LOCALES[currentLocale];
+        if (!locale) return;
+        var data = locale.data;
+        root.querySelectorAll('[data-l]').forEach(function (el) {
+          var key = el.getAttribute('data-l');
+          var val = getByPath(data, key);
+          if (val !== undefined && val !== null) el.textContent = val;
+        });
+      }
+      function fixAssetPaths(html) {
+        return html.replace(/(src|href)="(?:\.\.\/)+assets\//g, '$1="/screenkit-anim/assets/');
+      }
+
+      function injectSprite() {
+        if (document.getElementById('dn-icon-cellular')) return;
+        if (typeof DN_SPRITE_HTML === 'undefined') return;
+        var holder = document.createElement('div');
+        holder.style.display = 'none';
+        holder.innerHTML = DN_SPRITE_HTML;
+        document.body.insertBefore(holder, document.body.firstChild);
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // SCENE 1 · TRACKING (passive CSS-driven loop)
+      // ══════════════════════════════════════════════════════════════
+      function mountTrackingScene() {
+        var stage = document.getElementById('scene-tracking');
+        var locale = DN_LOCALES[currentLocale];
+        if (!locale || !locale.screens || !locale.screens.tracking) {
+          stage.innerHTML = '<div class="p-8 text-sm text-graphite">No tracking screen for ' + currentLocale + '</div>';
+          return;
+        }
+        var html = fixAssetPaths(locale.screens.tracking);
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        var inner = tmp.querySelector('.dn-mockup__stage');
+        stage.innerHTML = inner ? inner.innerHTML : html;
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // SCENE 2 · INBOX (mount → review 2 cards → reset → repeat)
+      // ══════════════════════════════════════════════════════════════
+      var INBOX_DISPLAY_COUNT = 8;
+      var INBOX_MOUNT_COUNT   = 5;
+      var INBOX_CYCLE_MS      = 12000;
+
+      function mountInboxCards() {
+        var list = document.getElementById('scene-inbox-list');
+        list.innerHTML = '';
+        var locale = DN_LOCALES[currentLocale];
+        var trips = (locale && locale.data && locale.data.sample && locale.data.sample.trips) || [];
+        var pool = trips.slice(0, INBOX_DISPLAY_COUNT);
+        while (pool.length < INBOX_DISPLAY_COUNT) pool.push(trips[pool.length % trips.length]);
+
+        var recatPoolIdx = pool.findIndex(function (t) { return t && t.recategorise === true; });
+        if (recatPoolIdx > 1) {
+          var recatTrip = pool.splice(recatPoolIdx, 1)[0];
+          pool.splice(1, 0, recatTrip);
+        }
+        pool = pool.slice(0, INBOX_MOUNT_COUNT);
+
+        var template = fixAssetPaths(locale.screens.inbox);
+        var tmp = document.createElement('div');
+        tmp.innerHTML = template;
+        var sampleCard = tmp.querySelector('.dn-mockup__trip-card-large');
+        if (!sampleCard) return;
+
+        var meta = (locale && locale.data && locale.data.meta) || {};
+        var unit = meta.distanceUnit || 'km';
+        var currency = meta.currencySymbol || '$';
+        var ratePerUnit = parseFloat(meta.mileage_rate_value) || 0;
+        var metersPerUnit = unit === 'mi' ? 1609.344 : 1000;
+
+        function formatDistance(m) {
+          var v = m / metersPerUnit;
+          return v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace(/\.0$/, '');
+        }
+        function formatAmount(m, category) {
+          if (category !== 'business') return '0.00';
+          return ((m / metersPerUnit) * ratePerUnit).toFixed(2);
+        }
+
+        pool.forEach(function (trip, idx) {
+          var card = sampleCard.cloneNode(true);
+          card.style.setProperty('--card-index', String(idx));
+          card.setAttribute('data-trip-index', String(idx));
+          card.setAttribute('data-trip-id', trip.id || '');
+          if (trip.recategorise) card.setAttribute('data-recategorise', 'true');
+
+          var img = card.querySelector('.dn-mockup__map-image');
+          if (img && trip.images && trip.images.inbox) {
+            img.src = trip.images.inbox.replace(/^(?:\.\.\/)+assets\//, '/screenkit-anim/assets/');
+          }
+
+          var names = card.querySelectorAll('.dn-mockup__location-name');
+          var addrs = card.querySelectorAll('.dn-mockup__location-address');
+          if (names[0] && trip.from) names[0].textContent = trip.from.name || '';
+          if (names[1] && trip.to)   names[1].textContent = trip.to.name   || '';
+          if (addrs[0] && trip.from) addrs[0].textContent = trip.from.address || '';
+          if (addrs[1] && trip.to)   addrs[1].textContent = trip.to.address   || '';
+
+          if (typeof trip.distance_meters === 'number') {
+            var metaRows = card.querySelectorAll('.dn-mockup__map-meta-row');
+            if (metaRows[0]) {
+              var distNum  = metaRows[0].querySelector('.dn-mockup__map-meta-number');
+              var distUnit = metaRows[0].querySelector('.dn-mockup__map-meta-unit');
+              if (distNum)  distNum.textContent  = formatDistance(trip.distance_meters);
+              if (distUnit) distUnit.textContent = unit;
+            }
+            if (metaRows[1]) {
+              var amtCur = metaRows[1].querySelector('.dn-mockup__map-meta-currency');
+              var amtNum = metaRows[1].querySelector('.dn-mockup__map-meta-number');
+              if (amtCur) amtCur.textContent = currency;
+              if (amtNum) amtNum.textContent = formatAmount(trip.distance_meters, trip.category);
+            }
+          }
+          card.__animMeters = trip.distance_meters;
+          card.__animFormat = formatAmount;
+
+          var categoryOptions = card.querySelectorAll('.dn-mockup__category-option');
+          categoryOptions.forEach(function (opt) { opt.setAttribute('data-active', 'false'); });
+          var activeIdx = trip.category === 'business' ? 1 : 0;
+          if (categoryOptions[activeIdx]) categoryOptions[activeIdx].setAttribute('data-active', 'true');
+
+          list.appendChild(card);
+        });
+      }
+
+      function resetInbox() {
+        var sceneEl = document.getElementById('scene-inbox');
+        sceneEl.classList.remove('is-mounted');
+        var counter = document.getElementById('anim-inbox-count');
+        if (counter) {
+          counter.classList.remove('anim-tick');
+          counter.textContent = String(INBOX_DISPLAY_COUNT);
+        }
+        mountInboxCards();
+        applyLocale(sceneEl);
+        // Force a layout pass so the freshly mounted cards register their
+        // initial (hidden) state before we flip is-mounted, otherwise the
+        // stagger fade-in collapses to an instant pop.
+        void sceneEl.offsetWidth;
+        sceneEl.classList.add('is-mounted');
+      }
+
+      function pulseReviewBtn(card) {
+        var btn = card.querySelector('.dn-mockup__btn-review');
+        if (!btn) return;
+        btn.classList.remove('anim-pulse', 'anim-tap');
+        void btn.offsetWidth;
+        btn.classList.add('anim-pulse', 'anim-tap');
+      }
+      function tickCounter(next) {
+        var counterEl = document.getElementById('anim-inbox-count');
+        if (!counterEl) return;
+        counterEl.textContent = String(next);
+        counterEl.classList.remove('anim-tick');
+        void counterEl.offsetWidth;
+        counterEl.classList.add('anim-tick');
+      }
+      function recategoriseToBusiness(card) {
+        card.classList.add('anim-recategorising');
+        var opts = card.querySelectorAll('.dn-mockup__category-option');
+        opts.forEach(function (opt) { opt.setAttribute('data-active', 'false'); });
+        var businessChip = opts[1];
+        if (businessChip) {
+          businessChip.setAttribute('data-active', 'true');
+          businessChip.classList.remove('anim-pulse');
+          void businessChip.offsetWidth;
+          businessChip.classList.add('anim-pulse');
+        }
+      }
+      function updateCardAmount(card, category) {
+        if (!card || typeof card.__animFormat !== 'function') return;
+        var row = card.querySelectorAll('.dn-mockup__map-meta-row')[1];
+        var amtNum = row && row.querySelector('.dn-mockup__map-meta-number');
+        if (amtNum) amtNum.textContent = card.__animFormat(card.__animMeters, category);
+      }
+
+      function runInboxCycle() {
+        clearReg(timersInbox);
+        resetInbox();
+        var list = document.getElementById('scene-inbox-list');
+        var cards = list.querySelectorAll('.dn-mockup__trip-card-large');
+        if (!cards.length) {
+          scheduleIn(timersInbox, runInboxCycle, INBOX_CYCLE_MS);
+          return;
+        }
+
+        var recatIdx = -1;
+        cards.forEach(function (c, i) { if (c.getAttribute('data-recategorise') === 'true') recatIdx = i; });
+
+        // Pacing within a 12s cycle: stagger mount ~700ms, then two reviews.
+        // Cycle layout (ms): 0 mount · 1800 review#1 · 5200 recat · 6400 review#2 · 8200 hold · 12000 reset
+        var remaining = INBOX_DISPLAY_COUNT;
+
+        var straightIdx = 0;
+        while (straightIdx < cards.length && cards[straightIdx].getAttribute('data-recategorise') === 'true') straightIdx++;
+
+        // Review #1 (straight tap)
+        if (straightIdx < cards.length) {
+          scheduleIn(timersInbox, function () { pulseReviewBtn(cards[straightIdx]); }, 1800);
+          scheduleIn(timersInbox, function () { cards[straightIdx].classList.add('is-reviewed'); }, 2060);
+          scheduleIn(timersInbox, function () { tickCounter(--remaining); }, 2100);
+        }
+
+        // Review #2 (recategorise then tap)
+        var idx2 = recatIdx >= 0 && recatIdx !== straightIdx ? recatIdx : straightIdx + 1;
+        if (idx2 >= 0 && idx2 < cards.length) {
+          if (recatIdx === idx2) {
+            scheduleIn(timersInbox, function () { recategoriseToBusiness(cards[idx2]); }, 5200);
+            scheduleIn(timersInbox, function () { updateCardAmount(cards[idx2], 'business'); }, 5420);
+          }
+          scheduleIn(timersInbox, function () { pulseReviewBtn(cards[idx2]); }, 6400);
+          scheduleIn(timersInbox, function () { cards[idx2].classList.add('is-reviewed'); }, 6660);
+          scheduleIn(timersInbox, function () { tickCounter(--remaining); }, 6700);
+        }
+
+        // Loop back to mount fresh cards.
+        scheduleIn(timersInbox, runInboxCycle, INBOX_CYCLE_MS);
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // SCENE 3 · REPORT + SEND (scroll, then modal sequence over it)
+      // ══════════════════════════════════════════════════════════════
+      var COMBINED_CYCLE_MS = 18000;
+
+      function mountReportScene(stageId) {
+        var stage = document.getElementById(stageId);
+        var locale = DN_LOCALES[currentLocale];
+        if (!locale || !locale.screens || !locale.screens.report) {
+          stage.innerHTML = '<div class="p-8 text-sm text-graphite">No report screen for ' + currentLocale + '</div>';
+          return;
+        }
+        var html = fixAssetPaths(locale.screens.report);
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        var inner = tmp.querySelector('.dn-mockup__stage');
+        stage.innerHTML = inner ? inner.innerHTML : html;
+
+        var actions = stage.querySelector('.dn-mockup__report-actions');
+        var sendIconSvg = actions ? actions.querySelector('svg') : null;
+        if (sendIconSvg && !sendIconSvg.parentNode.matches('#anim-send-icon')) {
+          var wrap = document.createElement('span');
+          wrap.id = 'anim-send-icon';
+          sendIconSvg.parentNode.insertBefore(wrap, sendIconSvg);
+          wrap.appendChild(sendIconSvg);
+        }
+
+        var scroll = stage.querySelector('.dn-mockup__report-scroll');
+        var existingTrips = scroll ? scroll.querySelectorAll('.dn-mockup__report-trip') : [];
+        if (!scroll || !existingTrips.length) return;
+
+        var trips = (locale.data && locale.data.sample && locale.data.sample.trips) || [];
+        var pool = trips.slice(0, 8);
+        while (pool.length < 8) pool.push(trips[pool.length % Math.max(trips.length, 1)]);
+        if (!pool.length) return;
+
+        var meta = locale.data.meta || {};
+        var unit = meta.distanceUnit || 'km';
+        var currency = meta.currencySymbol || '$';
+        var ratePerUnit = parseFloat(meta.mileage_rate_value) || 0;
+        var metersPerUnit = unit === 'mi' ? 1609.344 : 1000;
+        var strings = locale.data.strings || {};
+        var dateLabel = (locale.data.sample && locale.data.sample.start_date) || '';
+
+        function fmtDistance(m) {
+          var v = m / metersPerUnit;
+          var num = v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace(/\.0$/, '');
+          return num + ' ' + unit;
+        }
+        function fmtAmount(m, category) {
+          var amt = category === 'business' ? (m / metersPerUnit) * ratePerUnit : 0;
+          return currency + amt.toFixed(2);
+        }
+
+        var template = existingTrips[0].cloneNode(true);
+        existingTrips.forEach(function (el) { el.parentNode.removeChild(el); });
+
+        var totalMeters = 0;
+        var totalAmount = 0;
+        pool.forEach(function (trip) {
+          if (trip.category !== 'business') return;
+          var m = trip.distance_meters || 0;
+          totalMeters += m;
+          totalAmount += (m / metersPerUnit) * ratePerUnit;
+        });
+        var totalDistanceText = fmtDistance(totalMeters);
+        var totalAmountText   = currency + totalAmount.toFixed(2);
+
+        var dataRows = scroll.parentNode.querySelectorAll('.dn-mockup__report-table-row--data');
+        dataRows.forEach(function (row) {
+          var distCol = row.querySelector('.dn-mockup__report-table-col--center');
+          var amtCol  = row.querySelector('.dn-mockup__report-table-col--right');
+          if (distCol) distCol.textContent = totalDistanceText;
+          if (amtCol)  amtCol.textContent  = totalAmountText;
+        });
+
+        pool.forEach(function (trip) {
+          var node = template.cloneNode(true);
+          var date = node.querySelector('.dn-mockup__report-trip-date');
+          var addrs = node.querySelectorAll('.dn-mockup__report-trip-address');
+          var cat   = node.querySelector('.dn-mockup__report-trip-category');
+          var dist  = node.querySelector('.dn-mockup__report-trip-distance');
+          var amt   = node.querySelector('.dn-mockup__report-trip-amount');
+          if (date) date.textContent = dateLabel;
+          function nameAddr(p) {
+            if (!p) return '';
+            var name = p.name || '';
+            var addr = p.address || '';
+            return name && addr ? (name + ', ' + addr) : (name || addr);
+          }
+          if (addrs[0]) addrs[0].textContent = nameAddr(trip.from);
+          if (addrs[1]) addrs[1].textContent = nameAddr(trip.to);
+          if (cat) cat.textContent = trip.category === 'business' ? (strings.business || 'Business') : (strings.personal || 'Personal');
+          if (dist) dist.textContent = fmtDistance(trip.distance_meters || 0);
+          if (amt)  amt.textContent  = fmtAmount(trip.distance_meters || 0, trip.category);
+          scroll.appendChild(node);
+        });
+      }
+
+      function runCombinedCycle() {
+        clearReg(timersReport);
+        clearReg(timersModal);
+
+        var rs = document.querySelector('#scene-report .dn-mockup__report-scroll');
+        resetModalState();
+
+        if (rs) {
+          rs.style.transition = 'none';
+          rs.style.transform = 'translateY(0)';
+          void rs.offsetWidth;
+          rs.style.transition = '';
+
+          scheduleIn(timersReport, function () {
+            rs.style.transform = 'translateY(-180px)';
+          }, 800);
+          scheduleIn(timersReport, function () {
+            rs.style.transform = 'translateY(0)';
+          }, 4400);
+        }
+
+        function triggerTap(el) {
+          if (!el) return;
+          el.classList.remove('anim-tap');
+          void el.offsetWidth;
+          el.classList.add('anim-tap');
+        }
+
+        // Modal sequence overlays the report after the scroll resets.
+        var modal = document.getElementById('scene-modal');
+        var modalStart = 6500;
+        scheduleIn(timersModal, function () {
+          triggerTap(document.getElementById('anim-send-icon'));
+        }, modalStart - 280);
+        scheduleIn(timersModal, function () { modal.classList.add('is-modal-visible'); }, modalStart);
+        scheduleIn(timersModal, function () {
+          var locale = DN_LOCALES[currentLocale];
+          var s = (locale && locale.data && locale.data.sample) || {};
+          var defaults = SEND_REPORT_DEFAULTS[currentLocale] || SEND_REPORT_DEFAULTS['en-US'];
+          var name  = s.send_report_name      || defaults.name;
+          var email = s.send_report_recipient || defaults.recipient;
+          var note  = s.send_report_note      || defaults.note;
+          typewriter(document.getElementById('anim-modal-name'), name, 60, timersModal, function () {
+            scheduleIn(timersModal, function () {
+              typewriter(document.getElementById('anim-modal-email'), email, 55, timersModal, function () {
+                scheduleIn(timersModal, function () {
+                  typewriter(document.getElementById('anim-modal-note'), note, 50, timersModal);
+                }, 250);
+              });
+            }, 250);
+          });
+        }, modalStart + 600);
+        scheduleIn(timersModal, function () {
+          var sendBtn = modal.querySelector('.dn-mockup__modal-btn-send');
+          if (sendBtn) {
+            sendBtn.classList.add('is-pressed');
+            triggerTap(sendBtn);
+          }
+        }, modalStart + 9500);
+        scheduleIn(timersModal, function () {
+          modal.classList.add('is-modal-exiting');
+        }, modalStart + 9800);
+
+        scheduleIn(timersReport, runCombinedCycle, COMBINED_CYCLE_MS);
+      }
+
+      // ── Send modal mount + helpers (consumed by runCombinedCycle) ─
+
+      function mountSendModal() {
+        var scene = document.getElementById('scene-modal');
+        scene.innerHTML = '';
+        var locale = DN_LOCALES[currentLocale];
+        if (!locale || !locale.screens || !locale.screens['send-report']) return;
+        var html = fixAssetPaths(locale.screens['send-report']);
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        var overlay = tmp.querySelector('.dn-mockup__modal-overlay');
+        if (!overlay) return;
+        scene.appendChild(overlay);
+
+        var textarea = overlay.querySelector('.dn-mockup__modal-textarea');
+        if (textarea) {
+          textarea.classList.remove('dn-mockup__modal-textarea');
+          textarea.classList.add('dn-mockup__modal-input');
+          textarea.innerHTML = '';
+        }
+
+        var inputs = overlay.querySelectorAll('.dn-mockup__modal-input');
+        if (inputs[0]) inputs[0].id = 'anim-modal-name';
+        if (inputs[1]) inputs[1].id = 'anim-modal-email';
+        if (inputs[2]) inputs[2].id = 'anim-modal-note';
+
+        [inputs[0], inputs[1], inputs[2]].forEach(function (f) {
+          if (!f) return;
+          var wrap = document.createElement('span');
+          wrap.className = 'anim-typed-wrap';
+          wrap.innerHTML = '<span class="anim-typed"></span><span class="anim-cursor">|</span>';
+          f.appendChild(wrap);
+        });
+      }
+
+      function typewriter(fieldEl, text, msPerChar, reg, done) {
+        if (!fieldEl) { if (done) done(); return; }
+        fieldEl.classList.add('anim-field-active');
+        var typed = fieldEl.querySelector('.anim-typed');
+        if (!typed) { if (done) done(); return; }
+        typed.textContent = '';
+        var i = 0;
+        function step() {
+          if (i >= text.length) {
+            fieldEl.classList.remove('anim-field-active');
+            fieldEl.classList.add('anim-field-filled');
+            if (done) done();
+            return;
+          }
+          typed.textContent += text.charAt(i);
+          i++;
+          scheduleIn(reg, step, msPerChar);
+        }
+        step();
+      }
+
+      function resetModalState() {
+        var modal = document.getElementById('scene-modal');
+        modal.classList.remove('is-modal-visible', 'is-modal-exiting');
+        ['anim-modal-name', 'anim-modal-email', 'anim-modal-note'].forEach(function (id) {
+          var f = document.getElementById(id);
+          if (!f) return;
+          f.classList.remove('anim-field-active', 'anim-field-filled');
+          var typed = f.querySelector('.anim-typed');
+          if (typed) typed.textContent = '';
+        });
+        var sendBtn = modal.querySelector('.dn-mockup__modal-btn-send');
+        if (sendBtn) sendBtn.classList.remove('is-pressed');
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // Global playback (Pause/Restart) + progress heartbeat
+      // ══════════════════════════════════════════════════════════════
+      // Master cycle = longest scene cycle. The progress bar is a shared
+      // heartbeat across the independent scene loops, not a sequential
+      // timeline.
+      var MASTER_MS = Math.max(INBOX_CYCLE_MS, COMBINED_CYCLE_MS);
+
+      var rafId     = null;
+      var isPlaying = true;
+      var startTime = 0;
+      var pausedAt  = 0;
+
+      var progressFill  = document.getElementById('anim-progress-fill');
+      var progressTrack = document.getElementById('anim-progress-track');
+      var playpauseBtn  = document.getElementById('ctrl-playpause');
+      var ctrlIcon      = document.getElementById('ctrl-icon');
+      var ctrlLabel     = document.getElementById('ctrl-label');
+
+      function startAllLoops() {
+        runInboxCycle();
+        runCombinedCycle();
+      }
+
+      function tickProgress() {
+        if (!isPlaying) return;
+        var elapsed = (Date.now() - startTime) % MASTER_MS;
+        progressFill.style.width = (elapsed / MASTER_MS * 100).toFixed(2) + '%';
+        rafId = requestAnimationFrame(tickProgress);
+      }
+
+      function play(offsetMs) {
+        offsetMs = offsetMs || 0;
+        startTime = Date.now() - offsetMs;
+        isPlaying = true;
+        setPlayIcon(false);
+        startAllLoops();
+        tickProgress();
+      }
+
+      function pause() {
+        pausedAt = (Date.now() - startTime) % MASTER_MS;
+        clearAllTimers();
+        cancelAnimationFrame(rafId);
+        isPlaying = false;
+        setPlayIcon(true);
+      }
+
+      function restart() {
+        clearAllTimers();
+        cancelAnimationFrame(rafId);
+        pausedAt = 0;
+        play(0);
+      }
+
+      function setPlayIcon(showPlay) {
+        if (showPlay) {
+          ctrlIcon.innerHTML = '<polygon points="2,1.5 10.5,6 2,10.5"/>';
+          ctrlLabel.textContent = 'Play';
+        } else {
+          ctrlIcon.innerHTML = '<rect x="1.5" y="1.5" width="3.5" height="9" rx="1"/><rect x="7" y="1.5" width="3.5" height="9" rx="1"/>';
+          ctrlLabel.textContent = 'Pause';
+        }
+      }
+
+      playpauseBtn.addEventListener('click', function () {
+        if (isPlaying) pause();
+        else play(pausedAt);
+      });
+      document.getElementById('ctrl-restart').addEventListener('click', restart);
+      progressTrack.addEventListener('click', function (e) {
+        var rect = progressTrack.getBoundingClientRect();
+        var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        clearAllTimers();
+        cancelAnimationFrame(rafId);
+        play(pct * MASTER_MS);
+      });
+
+      // ══════════════════════════════════════════════════════════════
+      // Boot
+      // ══════════════════════════════════════════════════════════════
+      function boot() {
+        injectSprite();
+        mountTrackingScene();
+        mountReportScene('scene-report');
+        mountSendModal();
+
+        applyLocale(document.body);
+
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          setPlayIcon(true);
+          isPlaying = false;
+          return;
+        }
+
+        play(0);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+      } else {
+        boot();
+      }
+
+      // ── Drag-to-pan on the horizontal ribbon ─────────────────────
+      (function () {
+        var scroller = document.getElementById('scenes-main');
+        if (!scroller) return;
+        var isDown = false, startX = 0, startScroll = 0, moved = false;
+        var INTERACTIVE = 'button, input, a, [role="slider"], .anim-progress-track, .dropdown-trigger';
+        scroller.addEventListener('mousedown', function (e) {
+          if (e.target.closest(INTERACTIVE)) return;
+          isDown = true; moved = false;
+          startX = e.pageX;
+          startScroll = scroller.scrollLeft;
+          scroller.classList.remove('cursor-grab');
+          scroller.classList.add('cursor-grabbing');
+        });
+        function endDrag() {
+          if (!isDown) return;
+          isDown = false;
+          scroller.classList.add('cursor-grab');
+          scroller.classList.remove('cursor-grabbing');
+        }
+        scroller.addEventListener('mouseleave', endDrag);
+        scroller.addEventListener('mouseup', endDrag);
+        scroller.addEventListener('mousemove', function (e) {
+          if (!isDown) return;
+          var dx = e.pageX - startX;
+          if (Math.abs(dx) > 3) moved = true;
+          e.preventDefault();
+          scroller.scrollLeft = startScroll - dx;
+        });
+        scroller.addEventListener('click', function (e) {
+          if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
+        }, true);
+      })();
+
+      // ── Frame / Shadow / Locale dropdowns ────────────────────────
+      var FRAME_PRESETS  = window.DN_FRAME_PRESETS;
+      var SHADOW_PRESETS = window.DN_SHADOW_PRESETS;
+      var applyVars      = window.dnApplyFrameVars;
+
+      applyVars(FRAME_PRESETS['glass']);
+      applyVars(SHADOW_PRESETS['gentle']);
+
+      var openDropdowns = [];
+      function buildDropdown(opts) {
+        var rootEl  = document.getElementById(opts.rootId);
+        var trigger = document.getElementById(opts.triggerId);
+        var current = document.getElementById(opts.currentId);
+        var menu    = document.getElementById(opts.menuId);
+        var value   = opts.initial;
+        var alwaysActive = opts.alwaysActive === true;
+        var defaultValue = opts.defaultValue;
+        function renderMenu() {
+          menu.innerHTML = '';
+          opts.items.forEach(function (item) {
+            var li = document.createElement('li');
+            li.dataset.value = item.value;
+            li.className = 'px-4 py-2 text-base font-medium text-white cursor-pointer hover:bg-glass-item-hover whitespace-nowrap';
+            li.textContent = item.label;
+            if (item.value === value) li.classList.add('bg-glass-item-hover');
+            menu.appendChild(li);
+          });
+          current.textContent = (opts.items.find(function (i) { return i.value === value; }) || {}).label || '';
+          var active = alwaysActive || value !== defaultValue;
+          trigger.classList.toggle('is-active', active);
+        }
+        function open()  { menu.classList.remove('hidden'); }
+        function close() { menu.classList.add('hidden');    }
+        trigger.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var willOpen = menu.classList.contains('hidden');
+          openDropdowns.forEach(function (d) { d.close(); });
+          if (willOpen) open();
+        });
+        menu.addEventListener('click', function (e) {
+          var li = e.target.closest('[data-value]');
+          if (!li) return;
+          value = li.dataset.value;
+          renderMenu();
+          close();
+          opts.onChange(value);
+        });
+        var api = { close: close, contains: function (n) { return rootEl.contains(n); } };
+        openDropdowns.push(api);
+        renderMenu();
+        return api;
+      }
+      document.addEventListener('click', function (e) {
+        openDropdowns.forEach(function (d) { if (!d.contains(e.target)) d.close(); });
+      });
+
+      buildDropdown({
+        rootId: 'frame-dropdown', triggerId: 'frame-trigger', currentId: 'frame-current',
+        menuId: 'frame-menu', chevronId: 'frame-chevron',
+        initial: 'glass', defaultValue: 'naked',
+        items: [
+          { value: 'naked',       label: 'Device'      },
+          { value: 'glass',       label: 'Glass'       },
+          { value: 'white',       label: 'White'       },
+          { value: 'space-black', label: 'Space Black' },
+          { value: 'starlight',   label: 'Starlight'   },
+        ],
+        onChange: function (v) { applyVars(FRAME_PRESETS[v]); },
+      });
+
+      buildDropdown({
+        rootId: 'shadow-dropdown', triggerId: 'shadow-trigger', currentId: 'shadow-current',
+        menuId: 'shadow-menu', chevronId: 'shadow-chevron',
+        initial: 'gentle', defaultValue: 'none',
+        items: [
+          { value: 'none',   label: 'Shadow' },
+          { value: 'faint',  label: 'Faint'  },
+          { value: 'bare',   label: 'Bare'   },
+          { value: 'gentle', label: 'Gentle' },
+          { value: 'float',  label: 'Float'  },
+        ],
+        onChange: function (v) { applyVars(SHADOW_PRESETS[v]); },
+      });
+
+      buildDropdown({
+        rootId: 'locale-dropdown', triggerId: 'locale-trigger', currentId: 'locale-current',
+        menuId: 'locale-menu', chevronId: 'locale-chevron',
+        initial: currentLocale, alwaysActive: true,
+        items: Object.keys(DN_LOCALES).map(function (l) { return { value: l, label: l }; }),
+        onChange: function (v) {
+          var qs = new URLSearchParams(window.location.search);
+          qs.set('locale', v);
+          window.location.search = '?' + qs.toString();
+        },
+      });
+    })();
+  </script>
+</body>
+</html>

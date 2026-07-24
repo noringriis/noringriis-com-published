@@ -1,0 +1,403 @@
+/*
+ * Welcome screen prototype — welcome.css
+ *
+ * Page-level styling for the Splash and Welcome prototype pages.
+ * The Welcome JTBD animation is consumed read-only via iframe from
+ * coded-mockups-for-website/app/animations/welcome-jtbd-demo.html.
+ * Do not modify the animation file or duplicate its styles here.
+ */
+
+:root {
+  --dn-color-primary:   #003328;
+  --dn-color-brand:     #008568;
+  --dn-color-content-1: #121212;
+  --dn-color-content-2: #424242;
+  --dn-color-content-3: #757575;
+  --dn-color-bg:        #ffffff;
+  --dn-color-bg-mist:   #f5f5f5;
+  --dn-color-bg-brand:  #eff8f8;
+  --dn-color-border:    #e0e0e0;
+  --dn-font-body:       'Open Sans', system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--dn-font-body);
+  color: var(--dn-color-content-1);
+  background: var(--dn-color-bg-mist);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===========================================================
+ * Page chrome (visible only outside ?embed=1)
+ * =========================================================== */
+
+.page-chrome {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dn-color-content-3);
+}
+
+.page-chrome a {
+  color: var(--dn-color-content-3);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--dn-color-border);
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.page-chrome a:hover {
+  color: var(--dn-color-content-1);
+  border-color: var(--dn-color-content-3);
+}
+
+.page-chrome a[aria-current="page"] {
+  color: var(--dn-color-bg);
+  background: var(--dn-color-primary);
+  border-color: var(--dn-color-primary);
+}
+
+body.is-embed .page-chrome,
+body.is-embed #agentation-root { display: none; }
+
+/* ===========================================================
+ * Splash screen
+ * =========================================================== */
+
+.splash-stage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash {
+  width: 100%;
+  max-width: 390px;
+  aspect-ratio: 390 / 844;
+  position: relative;
+  overflow: hidden;
+  border-radius: 44px;
+  background: var(--dn-color-primary) url('splash-bg.jpg') center / cover no-repeat;
+  box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.35);
+}
+
+.splash__logo {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 51px);
+  transform: translate(-50%, -50%);
+  width: 120px;
+  height: 120px;
+  display: block;
+}
+
+.splash__proof {
+  position: absolute;
+  left: 50%;
+  bottom: 95px;
+  transform: translateX(-50%);
+  width: 192px;
+  height: auto;
+  display: block;
+}
+
+/* ===========================================================
+ * Welcome screen
+ *
+ * The Welcome SCREEN is a phone-shaped card on the workspace canvas.
+ * bg.jpg fills it (windshield photo with dark green gradient at the bottom).
+ * The live phone-mockup animation floats over the upper third; copy and
+ * CTAs sit on the dark band at the bottom.
+ * =========================================================== */
+
+.welcome-stage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+
+.welcome {
+  width: 100%;
+  max-width: 393px;
+  aspect-ratio: 393 / 852;
+  position: relative;
+  overflow: hidden;
+  border-radius: 32px;
+  background: #003328 url('welcome-bg.jpg') center / cover no-repeat;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 96px 24px 28px;
+  box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.35);
+}
+
+.welcome__phone {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-width: 100%;
+  aspect-ratio: 393 / 832;
+  container-type: inline-size;
+  overflow: hidden;
+  position: relative;
+}
+
+/*
+ * The animation hard-codes the phone at width:393px inside an iframe whose
+ * preview-mode body is 473px wide (40px padding each side). To make the
+ * VISIBLE phone (393x832) fill the wrapper, the iframe is absolutely centered
+ * and scaled so 393 native pixels map to the wrapper's inline size (100cqi).
+ * The overflow:hidden on the wrapper clips the preview padding that now sits
+ * outside the wrapper bounds.
+ */
+.welcome__phone-frame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 473px;
+  height: 940px;
+  border: 0;
+  background: transparent;
+  display: block;
+  transform-origin: center;
+  transform: translate(-50%, -50%) scale(calc(100cqi / 393px));
+}
+
+.welcome__copy {
+  margin-top: 40px;
+  text-align: center;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.welcome__title {
+  font-size: 38px;
+  font-weight: 600;
+  line-height: 46px;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.welcome__body {
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0;
+  max-width: 280px;
+}
+
+.welcome__cta {
+  margin-top: 40px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.welcome__cta button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-radius: 100px;
+  padding: 16px 24px;
+  font-family: var(--dn-font-body);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.welcome__cta .primary {
+  background: var(--dn-color-brand);
+  color: #ffffff;
+  border-radius: 4px;
+}
+
+.welcome__cta .primary:hover { background: #006e55; }
+
+.welcome__cta .secondary {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.welcome__cta .secondary:hover { color: #ffffff; }
+
+/* ===========================================================
+ * Embed mode: fit the card by height into the host iframe,
+ * leaving room for the bezel drop shadow.
+ * =========================================================== */
+
+body.is-embed { background: transparent; overflow: hidden; }
+body.is-embed .welcome-stage {
+  position: relative;
+  padding: 0 !important;
+  min-height: 100vh;
+  height: 100vh;
+  display: block !important;
+  overflow: hidden;
+}
+/* Device container: drives the card width and acts as the query container
+   so the bezel's padding + radius scale with the device, matching the
+   framed phone mockups elsewhere on the page. */
+body.is-embed .welcome-device {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  height: 88%;
+  width: auto;
+  aspect-ratio: 390 / 825;
+  max-width: calc(100% - 32px);
+  container-type: inline-size;
+}
+
+/* Glass bezel: same recipe as the .dn-mockup--framed phones (white-glass
+   fill, hairline border, backdrop blur, diagonal refraction, soft shadow). */
+body.is-embed .welcome-bezel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: calc(100cqi * 8 / 390);
+  border-radius: calc(100cqi * 56 / 390);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.60),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.10);
+  isolation: isolate;
+}
+body.is-embed .welcome-bezel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.05) 40%,
+    rgba(255, 255, 255, 0.00) 60%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+body.is-embed .welcome-bezel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  z-index: -1;
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  pointer-events: none;
+}
+
+body.is-embed .welcome {
+  position: relative;
+  z-index: 0;
+  top: auto;
+  left: auto;
+  transform: none;
+  height: 100%;
+  width: 100%;
+  aspect-ratio: auto;
+  max-width: none !important;
+  max-height: none !important;
+  padding: 0 !important;
+  display: block !important;
+  overflow: hidden;
+  container-type: inline-size;
+  border-radius: calc(100cqi * 48 / 390) !important;
+  box-shadow: none !important;
+}
+body.is-embed .welcome__phone {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 24.77cqi);
+  transform: translate(-50%, -50%);
+  width: 56.41cqi !important;
+  height: auto !important;
+  aspect-ratio: 393 / 832 !important;
+  flex: none !important;
+  max-width: none !important;
+  min-height: 0 !important;
+}
+body.is-embed .welcome__copy {
+  position: absolute;
+  bottom: 41.27cqi;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 79.49cqi;
+  margin: 0 !important;
+  gap: 0 !important;
+}
+body.is-embed .welcome__title {
+  font-size: 9.74cqi !important;
+  line-height: 11.79cqi !important;
+  letter-spacing: -0.244cqi !important;
+  text-shadow: none !important;
+  margin: 0 !important;
+}
+body.is-embed .welcome__cta {
+  position: absolute;
+  bottom: 8.65cqi;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 79.49cqi;
+  margin: 0 !important;
+  gap: 4.62cqi !important;
+  align-items: center;
+}
+body.is-embed .welcome__cta .primary {
+  width: 100% !important;
+  height: 12.31cqi !important;
+  padding: 2.56cqi 6.15cqi !important;
+  border-radius: 1.03cqi !important;
+  font-size: 4.1cqi !important;
+  line-height: 6.15cqi !important;
+}
+body.is-embed .welcome__cta .secondary {
+  width: 71.28cqi !important;
+  padding: 0 !important;
+  font-size: 4.1cqi !important;
+  line-height: 6.15cqi !important;
+  font-weight: 400 !important;
+}
+body.is-embed .welcome__cta button { cursor: default !important; }
+body.is-embed .welcome__cta .primary:hover { background: var(--dn-color-brand) !important; }
+body.is-embed .welcome__cta .secondary:hover { color: rgba(255, 255, 255, 0.9) !important; }
+
+/* ===========================================================
+ * Reduced motion
+ * The iframed animation handles its own reduced-motion fallback.
+ * Page chrome has no transitions worth disabling here.
+ * =========================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .page-chrome a { transition: none; }
+}

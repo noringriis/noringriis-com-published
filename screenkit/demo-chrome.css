@@ -1,0 +1,108 @@
+/* ScreenKit demo chrome. Mirrors device + shadow presets from
+   source-project/app/library.html. Not part of the ScreenKit package CSS.
+   Sync manually if the library presets change. */
+
+/* Shadow presets. Apply via class on .dn-mockup wrapper. */
+.dn-mockup--shadow-none   { --demo-shadow-outer: 0 0 0 rgba(0,0,0,0); }
+.dn-mockup--shadow-faint  { --demo-shadow-outer: 0 1px 4px rgba(0,0,0,0.07); }
+.dn-mockup--shadow-bare   { --demo-shadow-outer: 0 2px 8px rgba(0,0,0,0.10); }
+.dn-mockup--shadow-gentle { --demo-shadow-outer: 0 8px 24px rgba(0,0,0,0.18); }
+.dn-mockup--shadow-float  { --demo-shadow-outer: 0 16px 40px rgba(0,0,0,0.26); }
+
+/* Date column is 73px with text-overflow ellipsis but no nowrap, so
+   long locale dates (e.g. "19. Mär. 2026") wrap to 2 lines in Chrome
+   before the <br> for the time, producing a 3-line stack. Lock each
+   segment to one line so the date can ellipsize and the total stays
+   at 2 lines. */
+.dn-mockup__location-time {
+  white-space: nowrap;
+}
+
+/* The package's framed bezel bakes its own drop shadow. Swap it for
+   the var-driven shadow when a shadow class is present, keeping the
+   inner rim. */
+.dn-mockup--framed.dn-mockup--shadow-faint > .dn-mockup__bezel,
+.dn-mockup--framed.dn-mockup--shadow-bare > .dn-mockup__bezel,
+.dn-mockup--framed.dn-mockup--shadow-gentle > .dn-mockup__bezel,
+.dn-mockup--framed.dn-mockup--shadow-float > .dn-mockup__bezel,
+.dn-mockup--framed.dn-mockup--shadow-none > .dn-mockup__bezel {
+  box-shadow:
+    var(--demo-shadow-outer),
+    inset 0 1px 0 rgba(255, 255, 255, 0.60),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.10);
+}
+
+/* Genderless device frame.
+   outer white  409 × 860,  radius 48
+   black inner  402 × 852,  radius 44 (outer − 4)
+   screen       390 × 840,  radius 38 (outer − 10)
+*/
+.dn-mockup--genderless {
+  --gen-outer-w: 409;
+  --gen-radius-outer:  48;
+  --gen-pad-black:      4;
+  --gen-pad-screen:    10;
+  --gen-radius-black:  calc(var(--gen-radius-outer) - var(--gen-pad-black));
+  --gen-radius-screen: calc(var(--gen-radius-outer) - var(--gen-pad-screen));
+
+  background: #000100;
+  border-radius: calc(100cqi * var(--gen-radius-outer) / var(--gen-outer-w));
+}
+.dn-mockup--genderless > .dn-mockup__bezel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 409 / 860;
+  overflow: visible;
+  border-radius: calc(100cqi * var(--gen-radius-outer) / var(--gen-outer-w));
+  background: #ffffff;
+  box-shadow: var(--demo-shadow-outer);
+}
+.dn-mockup--genderless > .dn-mockup__bezel::before,
+.dn-mockup--genderless > .dn-mockup__bezel::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+.dn-mockup--genderless > .dn-mockup__bezel::before {
+  inset: 0;
+  border-radius: inherit;
+  border: calc(100cqi * 3 / 409) solid rgba(255, 255, 255, 0.96);
+  box-shadow:
+    inset 0 0 0 calc(100cqi * 1 / 409) rgba(255, 255, 255, 0.82),
+    inset 0 calc(100cqi * 2 / 409) calc(100cqi * 3 / 409) rgba(255, 255, 255, 0.78);
+  filter: blur(calc(100cqi * 1 / 409));
+  z-index: 1;
+}
+.dn-mockup--genderless > .dn-mockup__bezel::after {
+  left: calc(100cqi * 3.5 / 409);
+  top: calc(100cqi * 4 / 409);
+  width: calc(100cqi * 402 / 409);
+  height: calc(100cqi * 852 / 409);
+  border-radius: calc(100cqi * var(--gen-radius-black) / var(--gen-outer-w));
+  background: #000100;
+  box-shadow:
+    0 0 calc(100cqi * 3.5 / 409) calc(100cqi * 1 / 409) rgba(135, 145, 148, 0.88),
+    inset 0 0 0 calc(100cqi * 1 / 409) rgba(255, 255, 255, 0.12);
+  z-index: 2;
+}
+.dn-mockup--genderless > .dn-mockup__bezel > .dn-mockup__screen {
+  position: absolute;
+  left: calc(100cqi * 9.573 / 409);
+  top: calc(100cqi * 10 / 409);
+  width: calc(100cqi * 390 / 409);
+  aspect-ratio: 390 / 840;
+  border-radius: calc(100cqi * var(--gen-radius-screen) / var(--gen-outer-w));
+  background: #000100;
+  overflow: hidden;
+  z-index: 3;
+}
+.dn-mockup--genderless .dn-mockup__stage {
+  border-radius: calc(var(--gen-radius-screen) * 1px);
+  box-shadow: inset 0 0 0 1px #000100;
+}
+.dn-mockup--genderless .dn-mockup__tracking-map {
+  background-color: transparent;
+}
+.dn-mockup--genderless .dn-mockup__tracking-header {
+  background: rgb(30, 36, 36);
+}

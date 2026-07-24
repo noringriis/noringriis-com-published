@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driversnote Smart Inbox Review Animation</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/screenkit-anim/phone-mockup-smart-inbox.css">
+  <link rel="stylesheet" href="/screenkit-anim/tailwind.built.css">
+
+  <!-- Preview mode: hide chrome when embedded via ?preview=1 -->
+  <style>
+    body.is-preview { margin: 0; background: transparent; }
+    body.is-preview > nav,
+    body.is-preview > header { display: none !important; }
+    body.is-preview > main {
+      padding: 40px !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    body.is-preview > main > *:not(:first-child) { display: none !important; }
+    body.is-preview > main > .bg-mist {
+      background: transparent !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+    }
+  </style>
+  <script>
+    if (new URLSearchParams(window.location.search).get('preview') === '1') {
+      document.addEventListener('DOMContentLoaded', function () {
+        document.body.classList.add('is-preview');
+      });
+    }
+  </script>
+
+  <!-- Frame and shadow tokens are owned by src/frame-presets.js (loaded below).
+       The :root block below only declares fallbacks so the bezel paints before
+       the JS runs; src/frame-presets.js overwrites these via dnApplyFrameVars()
+       on boot. Do NOT redeclare the FRAME_PRESETS / SHADOW_PRESETS objects on
+       this page; they live in src/frame-presets.js. -->
+  <style>
+    :root {
+      --demo-bezel-bg:       rgba(255, 255, 255, 0.12);
+      --demo-bezel-filter:   blur(20px) saturate(180%);
+      --demo-bezel-border:   1px solid rgba(255, 255, 255, 0.25);
+      --demo-bezel-padding:  calc(100cqi * 8 / 390);
+      --demo-bezel-rim:      inset 0 1px 0 rgba(255,255,255,0.60), inset 0 -1px 0 rgba(255,255,255,0.10);
+      --demo-refraction:     linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.08) 100%);
+      --demo-shadow-outer:   0 8px 24px rgba(0,0,0,0.18);
+    }
+    body .dn-mockup--framed .dn-mockup__bezel {
+      background:              var(--demo-bezel-bg)      !important;
+      border:                  var(--demo-bezel-border)  !important;
+      padding:                 var(--demo-bezel-padding) !important;
+      box-shadow:              var(--demo-shadow-outer), var(--demo-bezel-rim) !important;
+    }
+    body .dn-mockup--framed .dn-mockup__bezel::before {
+      background: var(--demo-refraction) !important;
+    }
+
+    /* Solid floor so the glass bezel never shows through during fades */
+    .dn-mockup__screen {
+      background-color: var(--dn-color-bg-screen);
+    }
+
+    /* Single always-visible stage — the smart inbox morphs in place. */
+    #smart-inbox-stage { opacity: 1; }
+
+    /* ── Card list ────────────────────────────────────────────────────
+       Mirrors the welcome animation's inbox list: no flex gap; each card
+       carries its own bottom margin so .is-reviewed can collapse margin +
+       max-height without leaving a grey strip between cards. Ready cards
+       fly in from alternating sides (--fly-x); needs-review cards rise in
+       (--fly-y). Both settle via .is-in. */
+    #anim-card-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      /* One consistent system for every card entering and leaving the list. */
+      --card-dur: 700ms;
+      --card-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+    /* Cards grow in from zero height at the top (pushing the list down) and
+       collapse back out the same way — symmetric duration + easing both ways. */
+    #anim-card-list .dn-mockup__trip-card-large {
+      animation: none;
+      opacity: 0;
+      transform: translateY(14px);
+      max-height: 0;
+      margin-bottom: 0;
+      overflow: hidden;
+      transition:
+        opacity       var(--card-dur) var(--card-ease),
+        transform     var(--card-dur) var(--card-ease),
+        max-height    var(--card-dur) var(--card-ease),
+        margin-bottom var(--card-dur) var(--card-ease);
+    }
+    #anim-card-list .dn-mockup__trip-card-large.is-in {
+      opacity: 1;
+      transform: translateY(0);
+      max-height: var(--card-h, 680px);   /* measured height → full-duration grow */
+      margin-bottom: 16px;
+    }
+    /* Opening a slot for a landing stack: the gap grows (pushing existing cards
+       down) but the card stays invisible until the flyer lands and reveals it. */
+    #anim-card-list .dn-mockup__trip-card-large.is-opening {
+      opacity: 0;
+      transform: translateY(0);
+      max-height: var(--card-h, 680px);
+      margin-bottom: 16px;
+    }
+    #anim-card-list .dn-mockup__trip-card-large.is-reviewed {
+      opacity: 0;
+      transform: translateY(-14px);
+      max-height: 0;
+      margin-bottom: 0;
+      pointer-events: none;
+    }
+
+    /* Disabled bulk CTA (Scene 1 "0 ready to review"). */
+    .dn-mockup__ready-cta.is-disabled {
+      background: var(--dn-color-bg-neutral);
+      border: 1px solid var(--dn-color-border);
+      transition: background-color 0.4s ease, border-color 0.4s ease;
+    }
+    .dn-mockup__ready-cta.is-disabled .dn-mockup__ready-cta-label {
+      color: var(--dn-color-disabled-text);
+      transition: color 0.4s ease;
+    }
+    .dn-mockup__ready-cta {
+      transition: background-color 0.4s ease, border-color 0.4s ease;
+    }
+    .dn-mockup__ready-cta-label {
+      transition: color 0.4s ease;
+    }
+
+    /* Bulk CTA tap feedback: press scale + ripple (matches welcome). */
+    @keyframes anim-btn-pulse {
+      0%   { transform: scale(1);    filter: brightness(1); }
+      40%  { transform: scale(0.97); filter: brightness(0.92); }
+      100% { transform: scale(1);    filter: brightness(1); }
+    }
+    @keyframes anim-tap-ripple {
+      0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0.6; }
+      100% { transform: translate(-50%, -50%) scale(3.2); opacity: 0; }
+    }
+    .dn-mockup__ready-cta,
+    #anim-card-list .dn-mockup__btn-review {
+      position: relative;
+      overflow: hidden;
+    }
+    .dn-mockup__ready-cta.anim-pulse,
+    #anim-card-list .dn-mockup__btn-review.anim-pulse {
+      animation: anim-btn-pulse 260ms ease-out;
+      transform-origin: center;
+    }
+    .dn-mockup__ready-cta.anim-tap::after,
+    #anim-card-list .dn-mockup__btn-review.anim-tap::after {
+      content: '';
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.5);
+      pointer-events: none;
+      animation: anim-tap-ripple 520ms ease-out forwards;
+    }
+
+    /* Counter tick: brief upscale + brand tint when a value changes. */
+    @keyframes anim-count-tick {
+      0%   { transform: scale(1);    color: inherit; }
+      40%  { transform: scale(1.16); color: var(--dn-color-brand); }
+      100% { transform: scale(1);    color: inherit; }
+    }
+    .anim-tickable.anim-tick {
+      animation: anim-count-tick 340ms ease-out;
+      transform-origin: center;
+    }
+
+    /* Segment tab active-state cross-fade + tap pulse. */
+    .dn-mockup__segment-option {
+      transition: background-color 0.35s ease, box-shadow 0.35s ease;
+    }
+    .dn-mockup__segment-option .dn-mockup__segment-label {
+      transition: color 0.35s ease;
+    }
+    @keyframes anim-seg-pulse {
+      0%   { transform: scale(1); }
+      45%  { transform: scale(0.96); }
+      100% { transform: scale(1); }
+    }
+    .dn-mockup__segment-option.anim-pulse {
+      animation: anim-seg-pulse 320ms cubic-bezier(0.34, 1.1, 0.64, 1);
+      transform-origin: center;
+    }
+    /* Segment "cleared" check — hidden until its tab reaches caught-up. */
+    .dn-mockup__segment-check { display: none; }
+    .dn-mockup__segment-option.is-cleared .dn-mockup__segment-check { display: block; }
+    .dn-mockup__segment-option.is-cleared .dn-mockup__segment-badge { display: none; }
+
+    /* Caught-up layer — overlays the scroll area for Scenes 4 & 6. */
+    #anim-caughtup {
+      position: absolute;
+      top: 127px; left: 0; right: 0; bottom: 83px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.55s ease;
+    }
+    #anim-caughtup.is-visible { opacity: 1; }
+    #anim-caughtup .dn-mockup__caughtup { transform: translateY(-24px); }
+    /* Populated body fades out as the caught-up layer fades in. */
+    #anim-inbox-scroll {
+      transition: opacity 0.45s ease;
+    }
+    #anim-inbox-scroll.is-hidden { opacity: 0; pointer-events: none; }
+    /* Scroll content wrapper: a single human swipe (Scene 5) lifts the list so
+       the top card's "Mark as reviewed" button clears the fold. --needs-scroll-y
+       is measured at runtime (locale-robust). Equal-height cards mean each
+       reviewed card collapses and feeds the next into the same visible slot. */
+    #anim-scroll-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: transform 0.8s cubic-bezier(0.3, 0.7, 0.2, 1);
+      will-change: transform;
+    }
+    #anim-inbox-scroll.is-scrolled #anim-scroll-inner {
+      transform: translateY(var(--needs-scroll-y, -88px));
+    }
+
+    /* ── 4:3 authoring canvas (this page only) ─────────────────────────
+       The framed phone stays 393px and is centered; the canvas adds
+       horizontal room so trip cards are visible traveling in from
+       outside the device before they "document" onto the phone. */
+    .anim-mist { padding: 32px; }
+    .anim-canvas {
+      position: relative;
+      height: 960px;
+      width: calc(960px * 4 / 3);   /* 4:3; phone sits near the top so full trip
+                                       cards have room below during the transition */
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 30px;
+      flex-shrink: 0;
+    }
+    .anim-ghost-layer {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 5;                   /* above the phone so ghosts cross over it while fading */
+      container-type: normal;       /* cancel .dn-mockup inline-size container */
+      font-family: var(--dn-font-body);
+      color: var(--dn-color-content-primary);
+      /* Soft-fade the left/right edges so overflow clipping doesn't cut the
+         card shadows with a hard vertical line at the canvas boundary. */
+      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 80px, #000 calc(100% - 80px), transparent 100%);
+              mask-image: linear-gradient(to right, transparent 0, #000 80px, #000 calc(100% - 80px), transparent 100%);
+      -webkit-mask-repeat: no-repeat;
+              mask-repeat: no-repeat;
+    }
+    /* Flyers travel a single lane at the phone's vertical center. Ready trips
+       arrive as a stack of 3 (24px x-offset) from the left; needs-review trips
+       arrive as a single card from the right. Same distance + speed both sides.
+       Each flyer fully fades out BEFORE its visible edge crosses the phone
+       center, so nothing ever visibly passes the middle of the device. */
+    .anim-flyer {
+      position: absolute;
+      top: var(--flyer-top, 400px); /* set at runtime to the first list-card slot
+                                       so a flying stack lands directly in place */
+      opacity: 0;
+      --ghost-dur: 1400ms;        /* fly-in speed — keep JS entryDur in sync */
+      will-change: transform, opacity;
+    }
+    .anim-flyer--left  { left: 0;  animation: anim-fly-left  var(--ghost-dur, 900ms) cubic-bezier(0.34, 0.02, 0.2, 1) forwards; }
+    .anim-flyer--right { right: 0; animation: anim-fly-right var(--ghost-dur, 900ms) cubic-bezier(0.34, 0.02, 0.2, 1) forwards; }
+    /* Ready stacks LAND: fly to the list slot and stay (no fade) so the front
+       card continues into the vacant space and hands off to the real list card. */
+    .anim-flyer--land  { left: 0;  animation: anim-fly-land  var(--ghost-dur, 900ms) cubic-bezier(0.34, 0.02, 0.2, 1) forwards; }
+    /* Needs-review single: enter from the right at the segment control's top,
+       travel toward the "Needs review" segment, then scale to zero + fade as if
+       filed behind it. Same duration + easing as the stack. */
+    .anim-flyer--needs {
+      right: 0;
+      top: var(--seg-top, 60px);
+      transform-origin: top left;   /* collapse toward the segment (to its left) */
+      animation: anim-fly-needs var(--ghost-dur, 900ms) linear forwards;
+    }
+
+    /* Flying card content is scaled to the list card's real displayed size
+       (measured at runtime into --flyer-scale, top-left origin) so the hand-off
+       to the real list card has no resize jump — sizes are identical. */
+    .anim-single, .anim-stack {
+      transform: scale(var(--flyer-scale, 1));
+      transform-origin: top left;
+    }
+    .anim-single {
+      width: 358px;
+      border-radius: var(--dn-radius-card, 8px);
+      filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.08));
+    }
+    /* Stack of 3 trip cards, fanned 48px apart; front card (toward center) on top.
+       One soft shadow on the wrapper; the subtle base box-shadow on each card
+       stays so the layered edges read on the way in. */
+    .anim-stack {
+      width: 486px;
+      height: 470px;
+      filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.09));
+    }
+    .anim-stack .dn-mockup__trip-card-large {
+      position: absolute;
+      top: 0;
+      width: 358px;
+      border-radius: var(--dn-radius-card, 8px);
+    }
+    .anim-stack .dn-mockup__trip-card-large:nth-child(1) { left: 0; }
+    .anim-stack .dn-mockup__trip-card-large:nth-child(2) { left: 64px; }
+    .anim-stack .dn-mockup__trip-card-large:nth-child(3) { left: 128px; }
+    /* Back cards tuck behind the front (their fan offset → 0) then fade. */
+    .anim-flyer--land .dn-mockup__trip-card-large:nth-child(1) {
+      --tuck: 128px;
+      animation: anim-stack-tuck var(--ghost-dur, 900ms) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    .anim-flyer--land .dn-mockup__trip-card-large:nth-child(2) {
+      --tuck: 64px;
+      animation: anim-stack-tuck var(--ghost-dur, 900ms) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    @keyframes anim-fly-left {
+      0%   { transform: translateX(-440px); opacity: 0; }
+      14%  { opacity: 1; }
+      52%  { transform: translateX(20px);  opacity: 1; }
+      78%  { transform: translateX(150px); opacity: 0; }
+      100% { transform: translateX(300px); opacity: 0; }
+    }
+    @keyframes anim-fly-right {
+      0%   { transform: translateX(440px);   opacity: 0; }
+      14%  { opacity: 1; }
+      52%  { transform: translateX(-20px);   opacity: 1; }
+      78%  { transform: translateX(-150px);  opacity: 0; }
+      100% { transform: translateX(-300px);  opacity: 0; }
+    }
+    /* Land: fly from off-canvas-left and stop at the list slot, staying opaque. */
+    @keyframes anim-fly-land {
+      0%   { transform: translateX(-440px); opacity: 0; }
+      14%  { opacity: 1; }
+      100% { transform: translateX(var(--land-x, 340px)); opacity: 1; }
+    }
+    /* Needs single: fly in from the right at full size, decelerate toward the
+       segment (no full stop). Position + timing live here; the shrink is decoupled
+       onto the inner card (anim-needs-scale) so the card holds its real list-card
+       size through the visible margin travel, then shrinks as it decelerates. */
+    @keyframes anim-fly-needs {
+      0%   { transform: translateX(var(--needs-start, 460px)); opacity: 0; animation-timing-function: linear; }
+      10%  { transform: translateX(var(--needs-start, 460px)); opacity: 1; animation-timing-function: cubic-bezier(0.2, 0.5, 0.4, 0.85); }
+      55%  { transform: translateX(var(--needs-rest, -73px));  opacity: 1; animation-timing-function: cubic-bezier(0.3, 0.1, 0.3, 1); }
+      100% { transform: translateX(var(--needs-end, -113px));  opacity: 0; }
+    }
+    /* Shrink onset is held until 40% so the card reads at its true list-card size
+       through the fly-in, then collapses (top-left origin) into the segment. */
+    .anim-flyer--needs .anim-single {
+      animation: anim-needs-scale var(--ghost-dur, 900ms) forwards;
+    }
+    @keyframes anim-needs-scale {
+      0%   { transform: scale(var(--flyer-scale, 1)); animation-timing-function: linear; }
+      40%  { transform: scale(var(--flyer-scale, 1)); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+      100% { transform: scale(calc(var(--flyer-scale, 1) * 0.001)); }
+    }
+    /* Back cards: stay fanned (offset visible) while the stack travels in, then
+       slide behind the front card near the landing (translateX → --tuck), and
+       only then fade — so the fan reads on the way in and there's no heavy
+       triple-shadow when the front card lands in the list. */
+    @keyframes anim-stack-tuck {
+      0%   { transform: translateX(0);            opacity: 1; }  /* fanned */
+      50%  { transform: translateX(0);            opacity: 1; }  /* hold the fan in flight */
+      75%  { transform: translateX(var(--tuck, 0)); opacity: 1; } /* collapse behind front */
+      90%  { transform: translateX(var(--tuck, 0)); opacity: 0; } /* fade once tucked */
+      100% { transform: translateX(var(--tuck, 0)); opacity: 0; }
+    }
+
+    /* Badge bounce as each trip lands in its tab. */
+    @keyframes anim-badge-bounce {
+      0%   { transform: scale(1); }
+      35%  { transform: scale(1.38); }
+      65%  { transform: scale(0.9); }
+      100% { transform: scale(1); }
+    }
+    .anim-tickable.anim-bounce {
+      animation: anim-badge-bounce 420ms cubic-bezier(0.34, 1.5, 0.5, 1);
+      transform-origin: center;
+    }
+
+    /* Portfolio embed (?preview=1): keep the full 4:3 canvas + flying cards and
+       scale it to fill the iframe width via a container query, so it tracks the
+       host breakpoints with no crop or letterbox. */
+    body.is-preview > main { padding: 0 !important; display: block; min-height: 0; }
+    body.is-preview .anim-mist {
+      display: block;
+      container-type: inline-size;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      padding: 0;
+      background: transparent;
+      border-radius: 0;
+      overflow: hidden;
+    }
+    body.is-preview .anim-canvas {
+      width: 1280px;
+      height: 960px;
+      transform-origin: top left;
+      transform: scale(calc(100cqw / 1280px));
+    }
+
+    /* Celebration burst: draw-in + gentle pop when the scene lands. */
+    @keyframes anim-burst-pop {
+      0%   { transform: scale(0.4); opacity: 0; }
+      55%  { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    #anim-caughtup.is-visible .dn-mockup__caughtup-burst {
+      animation: anim-burst-pop 560ms cubic-bezier(0.34, 1.2, 0.64, 1);
+      transform-origin: center;
+    }
+
+    /* ── Reduced motion: hold Scene 1 (empty setup) as static poster ── */
+    @media (prefers-reduced-motion: reduce) {
+      #anim-card-list .dn-mockup__trip-card-large { display: none; }
+    }
+
+    /* ── Playback controls (same component as website-hero / welcome) ── */
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 7px 16px;
+      border-radius: 9999px;
+      border: 1px solid var(--color-graphite);
+      background: transparent;
+      color: var(--color-midnight-forest);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+    .ctrl-btn:hover {
+      background: var(--color-mist);
+      border-color: var(--color-midnight-forest);
+    }
+    .anim-progress-track {
+      width: 393px;
+      height: 4px;
+      background: var(--color-slate-shadow);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+    .anim-progress-fill {
+      height: 100%;
+      background: var(--color-midnight-forest);
+      border-radius: inherit;
+      width: 0%;
+    }
+    .anim-scene-labels {
+      width: 393px;
+      display: flex;
+      margin-top: 7px;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      color: var(--color-graphite);
+    }
+    .anim-scene-labels span { flex: 1; }
+  </style>
+</head>
+<body class="font-sans bg-pure-canvas text-midnight-forest min-h-screen">
+
+  <!-- ══════════════════════════════════════════════════════════════
+       GLOBAL NAV (same as website-hero / welcome / library)
+  ═══════════════════════════════════════════════════════════════════ -->
+  <nav class="bg-pure-canvas">
+    <div class="grid grid-cols-3 items-center px-20 h-20 max-w-[1600px] mx-auto">
+      <a href="../library.html" class="flex items-center" aria-label="Driversnote">
+        <img src="/screenkit-anim/assets/logo.svg" alt="Driversnote" class="size-10" />
+      </a>
+      <div class="flex items-center justify-center gap-[32px] text-base font-medium">
+        <a href="../library.html" class="text-graphite hover:text-ink transition-colors duration-150">Mockups</a>
+        <a href="../animation.html" class="text-midnight-forest">Animations</a>
+      </div>
+      <div class="flex justify-end">
+        <a href="../map-route-editor-v2.html"
+           class="group relative inline-flex items-center justify-center size-8"
+           aria-label="Routes">
+          <img src="/screenkit-anim/assets/route-icon.svg" alt="" class="size-8" />
+          <span class="pointer-events-none absolute top-full left-1/2 mt-3
+                       flex items-center h-7 px-2 rounded-lg
+                       bg-midnight-forest text-pure-canvas text-xs font-semibold whitespace-nowrap
+                       opacity-0 -translate-x-1/2
+                       transition-opacity duration-200 ease-out
+                       group-hover:opacity-100">
+            Routes
+          </span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PAGE ACTIONS (Frame · Shadow | Locale · Download ZIP)
+  ═══════════════════════════════════════════════════════════════════ -->
+  <header class="bg-pure-canvas">
+    <div class="flex items-center justify-between gap-4 px-20 pt-10 pb-3 max-w-[1600px] mx-auto">
+      <div class="flex items-center">
+        <div class="flex items-center gap-2">
+          <div class="relative" id="frame-dropdown">
+            <button type="button" id="frame-trigger" class="dropdown-trigger">
+              <span id="frame-current">Device</span>
+              <svg id="frame-chevron" class="size-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path fill="currentColor" d="M12 14.975C11.8667 14.975 11.7417 14.9542 11.625 14.9125C11.5084 14.8709 11.4 14.8 11.3 14.7L6.70005 10.1C6.51672 9.91672 6.42505 9.68338 6.42505 9.40005C6.42505 9.11672 6.51672 8.88338 6.70005 8.70005C6.88338 8.51672 7.11672 8.42505 7.40005 8.42505C7.68338 8.42505 7.91672 8.51672 8.10005 8.70005L12 12.6L15.9 8.70005C16.0834 8.51672 16.3167 8.42505 16.6 8.42505C16.8834 8.42505 17.1167 8.51672 17.3 8.70005C17.4834 8.88338 17.575 9.11672 17.575 9.40005C17.575 9.68338 17.4834 9.91672 17.3 10.1L12.7 14.7C12.6 14.8 12.4917 14.8709 12.375 14.9125C12.2584 14.9542 12.1334 14.975 12 14.975Z"/>
+              </svg>
+            </button>
+            <ul id="frame-menu"
+                class="hidden absolute top-full left-0 mt-2 z-50 min-w-full py-2
+                       bg-glass-bg backdrop-blur-[24px] backdrop-saturate-150 rounded-2xl
+                       shadow-[0_12px_80px_rgba(0,0,0,0.16)] whitespace-nowrap"></ul>
+          </div>
+          <div class="relative" id="shadow-dropdown">
+            <button type="button" id="shadow-trigger" class="dropdown-trigger">
+              <span id="shadow-current">Shadow</span>
+              <svg id="shadow-chevron" class="size-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path fill="currentColor" d="M12 14.975C11.8667 14.975 11.7417 14.9542 11.625 14.9125C11.5084 14.8709 11.4 14.8 11.3 14.7L6.70005 10.1C6.51672 9.91672 6.42505 9.68338 6.42505 9.40005C6.42505 9.11672 6.51672 8.88338 6.70005 8.70005C6.88338 8.51672 7.11672 8.42505 7.40005 8.42505C7.68338 8.42505 7.91672 8.51672 8.10005 8.70005L12 12.6L15.9 8.70005C16.0834 8.51672 16.3167 8.42505 16.6 8.42505C16.8834 8.42505 17.1167 8.51672 17.3 8.70005C17.4834 8.88338 17.575 9.11672 17.575 9.40005C17.575 9.68338 17.4834 9.91672 17.3 10.1L12.7 14.7C12.6 14.8 12.4917 14.8709 12.375 14.9125C12.2584 14.9542 12.1334 14.975 12 14.975Z"/>
+              </svg>
+            </button>
+            <ul id="shadow-menu"
+                class="hidden absolute top-full left-0 mt-2 z-50 min-w-full py-2
+                       bg-glass-bg backdrop-blur-[24px] backdrop-saturate-150 rounded-2xl
+                       shadow-[0_12px_80px_rgba(0,0,0,0.16)] whitespace-nowrap"></ul>
+          </div>
+        </div>
+
+        <div class="w-px h-9 bg-fog mx-6"></div>
+
+        <div class="relative" id="locale-dropdown">
+          <button type="button" id="locale-trigger" class="dropdown-trigger">
+            <span id="locale-current">en-US</span>
+            <svg id="locale-chevron" class="size-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path fill="currentColor" d="M12 14.975C11.8667 14.975 11.7417 14.9542 11.625 14.9125C11.5084 14.8709 11.4 14.8 11.3 14.7L6.70005 10.1C6.51672 9.91672 6.42505 9.68338 6.42505 9.40005C6.42505 9.11672 6.51672 8.88338 6.70005 8.70005C6.88338 8.51672 7.11672 8.42505 7.40005 8.42505C7.68338 8.42505 7.91672 8.51672 8.10005 8.70005L12 12.6L15.9 8.70005C16.0834 8.51672 16.3167 8.42505 16.6 8.42505C16.8834 8.42505 17.1167 8.51672 17.3 8.70005C17.4834 8.88338 17.575 9.11672 17.575 9.40005C17.575 9.68338 17.4834 9.91672 17.3 10.1L12.7 14.7C12.6 14.8 12.4917 14.8709 12.375 14.9125C12.2584 14.9542 12.1334 14.975 12 14.975Z"/>
+            </svg>
+          </button>
+          <ul id="locale-menu"
+              class="hidden absolute top-full left-0 mt-2 z-50 min-w-full py-2
+                     bg-glass-bg backdrop-blur-[24px] backdrop-saturate-150 rounded-2xl
+                     shadow-[0_12px_80px_rgba(0,0,0,0.16)] whitespace-nowrap"></ul>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="flex flex-col items-center pt-10 pb-20 px-20">
+
+    <div class="bg-mist rounded-3xl flex items-center justify-center anim-mist">
+
+      <!-- 4:3 authoring canvas: phone centered, trip cards fly in from outside -->
+      <div class="anim-canvas" id="anim-canvas">
+        <!-- Ghost layer carries .dn-mockup for the color tokens; data-animated="false"
+             disables phone-mockup.css's card-mount keyframe so our fly animation wins. -->
+        <div class="anim-ghost-layer dn-mockup" id="anim-ghost-layer" data-animated="false" aria-hidden="true"></div>
+
+      <div class="dn-mockup dn-mockup--framed" id="smart-inbox-phone" style="width:393px">
+        <div class="dn-mockup__bezel">
+          <div class="dn-mockup__screen" id="smart-inbox-screen">
+
+            <div class="dn-mockup__stage" id="smart-inbox-stage">
+
+              <!-- Status bar -->
+              <div class="dn-mockup__status-bar" aria-hidden="true">
+                <span class="dn-mockup__status-time">1:47</span>
+                <div class="dn-mockup__dynamic-island"></div>
+                <div class="dn-mockup__status-icons">
+                  <svg class="dn-mockup__icon-cellular" aria-hidden="true" focusable="false"><use href="#dn-icon-cellular"/></svg>
+                  <svg class="dn-mockup__icon-wifi"     aria-hidden="true" focusable="false"><use href="#dn-icon-wifi"/></svg>
+                  <svg class="dn-mockup__icon-battery"  aria-hidden="true" focusable="false"><use href="#dn-icon-battery"/></svg>
+                </div>
+              </div>
+
+              <!-- Header: title + auto-tracking pill, then Ready / Needs review segment -->
+              <div class="dn-mockup__inbox2-header">
+                <div class="dn-mockup__inbox2-titlebar">
+                  <span class="dn-mockup__inbox2-title" data-l="strings.inbox">Inbox</span>
+                  <div class="dn-mockup__autotrack-pill">
+                    <span class="dn-mockup__autotrack-dot" aria-hidden="true"></span>
+                    <span class="dn-mockup__autotrack-label" data-l="strings.auto_track">Auto-track</span>
+                    <svg class="dn-mockup__autotrack-chevron" aria-hidden="true" focusable="false"><use href="#dn-icon-chevron-down"/></svg>
+                  </div>
+                </div>
+                <div class="dn-mockup__inbox2-segwrap">
+                  <div class="dn-mockup__segment" role="tablist" aria-hidden="true">
+                    <div class="dn-mockup__segment-option dn-mockup__segment-option--active" id="seg-ready">
+                      <span class="dn-mockup__segment-label" data-l="strings.tab_ready">Ready</span>
+                      <span class="dn-mockup__segment-badge anim-tickable" id="seg-ready-count">0</span>
+                      <svg class="dn-mockup__segment-check" aria-hidden="true" focusable="false"><use href="#dn-icon-check-circle"/></svg>
+                    </div>
+                    <div class="dn-mockup__segment-option" id="seg-needs">
+                      <span class="dn-mockup__segment-label" data-l="strings.tab_needs_review">Needs review</span>
+                      <span class="dn-mockup__segment-badge dn-mockup__segment-badge--warning anim-tickable" id="seg-needs-count">0</span>
+                      <svg class="dn-mockup__segment-check" aria-hidden="true" focusable="false"><use href="#dn-icon-check-circle"/></svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Populated body: bulk alert + trip cards -->
+              <div class="dn-mockup__inbox2-scroll" id="anim-inbox-scroll">
+                <div id="anim-scroll-inner">
+                <div class="dn-mockup__ready-alert" id="anim-alert">
+                  <div class="dn-mockup__ready-alert-heading">
+                    <span class="dn-mockup__ready-alert-title">
+                      <span id="anim-alert-count" class="anim-tickable">0</span>
+                      <span id="anim-alert-suffix" data-l="strings.ready_to_review_suffix">ready to review</span>
+                    </span>
+                    <span class="dn-mockup__ready-alert-subtitle" id="anim-alert-subtitle" data-l="strings.ready_summary_subtitle">Worth a scroll before marking them all as reviewed.</span>
+                  </div>
+                  <div class="dn-mockup__ready-stats">
+                    <div class="dn-mockup__ready-stat">
+                      <span class="dn-mockup__ready-stat-value" id="anim-alert-amount">$0.00</span>
+                      <span class="dn-mockup__ready-stat-label" id="anim-alert-amount-label" data-l="strings.amount_label">Amount</span>
+                    </div>
+                    <div class="dn-mockup__ready-stat">
+                      <span class="dn-mockup__ready-stat-value" id="anim-alert-distance">0.00</span>
+                      <span class="dn-mockup__ready-stat-label" data-l="strings.distance_unit_long">Miles</span>
+                    </div>
+                  </div>
+                  <div class="dn-mockup__ready-cta is-disabled" id="anim-alert-cta">
+                    <span class="dn-mockup__ready-cta-label" data-l="strings.mark_all_reviewed">Mark all as reviewed</span>
+                  </div>
+                </div>
+
+                <div class="dn-mockup__ready-divider" aria-hidden="true"></div>
+
+                <div id="anim-card-list"><!-- trip cards injected at runtime --></div>
+                </div>
+              </div>
+
+              <!-- Caught-up celebration layer (Scenes 4 & 6) -->
+              <div id="anim-caughtup">
+                <div class="dn-mockup__caughtup">
+                  <svg class="dn-mockup__caughtup-burst" viewBox="0 0 96 96" aria-hidden="true" focusable="false">
+                    <g stroke="var(--dn-color-content-primary)" stroke-width="2" stroke-linecap="round">
+                      <line x1="48" y1="6" x2="48" y2="15"/>
+                      <line x1="74" y1="12" x2="69" y2="20"/>
+                      <line x1="88" y1="34" x2="79" y2="37"/>
+                      <line x1="88" y1="60" x2="79" y2="57"/>
+                      <line x1="22" y1="12" x2="27" y2="20"/>
+                      <line x1="8" y1="34" x2="17" y2="37"/>
+                      <line x1="8" y1="60" x2="17" y2="57"/>
+                    </g>
+                    <g fill="var(--dn-color-content-primary)">
+                      <circle cx="80" cy="20" r="1.6"/>
+                      <circle cx="16" cy="22" r="1.6"/>
+                      <circle cx="84" cy="72" r="1.6"/>
+                      <circle cx="14" cy="70" r="1.6"/>
+                      <circle cx="48" cy="90" r="1.6"/>
+                    </g>
+                    <circle cx="48" cy="48" r="21" fill="var(--dn-color-content-primary)"/>
+                    <path d="M39 48.5l6 6 12-13" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                  </svg>
+                  <span class="dn-mockup__caughtup-title" data-l="strings.caught_up_title">You're all caught up</span>
+                  <div class="dn-mockup__caughtup-stats">
+                    <div class="dn-mockup__caughtup-stat">
+                      <img class="dn-mockup__caughtup-stat-icon" src="/screenkit-anim/assets/illustrations/amount-illustration.png" alt="" aria-hidden="true">
+                      <span class="dn-mockup__caughtup-stat-value" id="anim-caughtup-amount">$57.33</span>
+                      <span class="dn-mockup__caughtup-stat-label" data-l="strings.amount_label">Amount</span>
+                    </div>
+                    <div class="dn-mockup__caughtup-stat">
+                      <img class="dn-mockup__caughtup-stat-icon" src="/screenkit-anim/assets/illustrations/distance-illustration.png" alt="" aria-hidden="true">
+                      <span class="dn-mockup__caughtup-stat-value" id="anim-caughtup-distance">101.10</span>
+                      <span class="dn-mockup__caughtup-stat-label" data-l="strings.distance_unit_long">Miles</span>
+                    </div>
+                  </div>
+                  <span class="dn-mockup__caughtup-footer">
+                    <span data-l="strings.caught_up_footer">See your full logbook in</span>
+                    <span class="dn-mockup__caughtup-footer-link" data-l="strings.reports">Reports</span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Navigation bar -->
+              <nav class="dn-mockup__nav-bar" aria-label="Main navigation">
+                <div class="dn-mockup__nav-tabs">
+                  <div class="dn-mockup__nav-tab" data-tab="inbox" data-active="true">
+                    <div class="dn-mockup__nav-tab-iconwrap">
+                      <svg class="dn-mockup__nav-tab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-inbox-active"/></svg>
+                      <span class="dn-mockup__nav-badge" id="anim-nav-badge">16</span>
+                    </div>
+                    <span class="dn-mockup__nav-tab-label" data-l="strings.inbox">Inbox</span>
+                  </div>
+                  <div class="dn-mockup__nav-tab" data-tab="all-trips">
+                    <svg class="dn-mockup__nav-tab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-trips"/></svg>
+                    <span class="dn-mockup__nav-tab-label" data-l="strings.all_trips">All Trips</span>
+                  </div>
+                  <div class="dn-mockup__nav-fab-spacer" aria-hidden="true"></div>
+                  <div class="dn-mockup__nav-tab dn-mockup__nav-tab--reports" data-tab="reports">
+                    <svg class="dn-mockup__nav-tab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-reports"/></svg>
+                    <span class="dn-mockup__nav-tab-label" data-l="strings.reports">Reports</span>
+                  </div>
+                  <div class="dn-mockup__nav-tab dn-mockup__nav-tab--settings" data-tab="settings">
+                    <svg class="dn-mockup__nav-tab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-settings"/></svg>
+                    <span class="dn-mockup__nav-tab-label" data-l="strings.settings">Settings</span>
+                  </div>
+                </div>
+                <div class="dn-mockup__nav-fab" aria-hidden="true">
+                  <svg class="dn-mockup__nav-fab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-fab"/></svg>
+                </div>
+              </nav>
+
+              <div class="dn-mockup__home-indicator" aria-hidden="true">
+                <div class="dn-mockup__home-bar"></div>
+              </div>
+
+            </div><!-- /.dn-mockup__stage -->
+
+          </div><!-- /.dn-mockup__screen -->
+        </div><!-- /.dn-mockup__bezel -->
+      </div><!-- /.dn-mockup -->
+      </div><!-- /.anim-canvas -->
+    </div><!-- /.bg-mist -->
+
+    <!-- Playback controls (mandatory for every animation page; see CLAUDE.md) -->
+    <div class="flex items-center gap-3 mt-9">
+      <button id="ctrl-playpause" class="ctrl-btn">
+        <svg id="ctrl-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+          <rect x="1.5" y="1.5" width="3.5" height="9" rx="1"/>
+          <rect x="7"   y="1.5" width="3.5" height="9" rx="1"/>
+        </svg>
+        <span id="ctrl-label">Pause</span>
+      </button>
+      <button id="ctrl-restart" class="ctrl-btn">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 6a4 4 0 1 0 .7-2.3"/>
+          <polyline points="0.5,2 2.5,3.8 2.5,1.5"/>
+        </svg>
+        Restart
+      </button>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="anim-progress-track" id="anim-progress-track">
+      <div class="anim-progress-fill" id="anim-progress-fill"></div>
+    </div>
+
+    <!-- Scene markers -->
+    <div class="anim-scene-labels">
+      <span>Empty</span>
+      <span>Trips arrive</span>
+      <span>Mark all</span>
+      <span>Needs review</span>
+      <span>Caught up</span>
+    </div>
+
+  </main>
+
+  <!-- DN_LOCALES + rendered screen HTML + shared sprite -->
+  <script src="/screenkit-anim/mockup-locales-smart-inbox.js"></script>
+
+  <!-- Single source of truth for FRAME_PRESETS / SHADOW_PRESETS -->
+  <script src="/screenkit-anim/frame-presets.js"></script>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // ── Locale resolution ──────────────────────────────────────────
+      function resolveLocale() {
+        if (window.__DN_LOCALE__ && DN_LOCALES[window.__DN_LOCALE__]) return window.__DN_LOCALE__;
+        var qp = new URLSearchParams(window.location.search).get('locale');
+        if (qp && DN_LOCALES[qp]) return qp;
+        return 'en-US';
+      }
+      var currentLocale = resolveLocale();
+
+      // ── Timer registry ────────────────────────────────────────────
+      var timers = [];
+      function schedule(fn, delay) {
+        var id = setTimeout(fn, delay);
+        timers.push(id);
+        return id;
+      }
+      function clearTimers() {
+        timers.forEach(function (id) { clearTimeout(id); });
+        timers = [];
+      }
+
+      // ── Locale helpers ────────────────────────────────────────────
+      function getByPath(obj, path) {
+        return path.split('.').reduce(function (acc, k) { return acc != null ? acc[k] : undefined; }, obj);
+      }
+      function applyLocale(root) {
+        var locale = DN_LOCALES[currentLocale];
+        if (!locale) return;
+        root.querySelectorAll('[data-l]').forEach(function (el) {
+          var val = getByPath(locale.data, el.getAttribute('data-l'));
+          if (val !== undefined && val !== null) el.textContent = val;
+        });
+      }
+      function fixAssetPaths(html) {
+        return html.replace(/(src|href)="\.\.\/assets\//g, '$1="/screenkit-anim/assets/');
+      }
+
+      function injectSprite() {
+        if (document.getElementById('dn-icon-cellular')) return;
+        if (typeof DN_SPRITE_HTML === 'undefined') return;
+        var holder = document.createElement('div');
+        holder.style.display = 'none';
+        holder.innerHTML = DN_SPRITE_HTML;
+        document.body.insertBefore(holder, document.body.firstChild);
+      }
+
+      // ── Locale-derived story data ─────────────────────────────────
+      var data     = DN_LOCALES[currentLocale] ? DN_LOCALES[currentLocale].data : { meta: {}, strings: {}, sample: {} };
+      var meta     = data.meta || {};
+      var strings  = data.strings || {};
+      var sample   = data.sample || {};
+      var trips    = (sample.trips) || [];
+
+      var unit          = meta.distanceUnit || 'km';
+      var currency      = meta.currencySymbol || sample.currency_symbol || '$';
+      var ratePerUnit   = parseFloat(meta.mileage_rate_value) || 0;
+      var metersPerUnit = unit === 'mi' ? 1609.344 : 1000;
+
+      // Story constants (storyboard: 12 ready + 4 needs review).
+      var READY_COUNT      = 12;
+      var NEEDS_COUNT      = 4;
+      var READY_MOUNT      = 3;   // ready cards actually flown in (counter carries the 12)
+      var TOTAL_AMOUNT     = parseFloat(sample.ready_total_amount)   || 57.33;
+      var TOTAL_DISTANCE   = parseFloat(sample.ready_total_distance) || 101.10;
+
+      // Ready bucket = high-confidence business trips.
+      var businessTrips = trips.filter(function (t) { return t && t.category === 'business'; });
+      // Needs-review bucket = the lower-confidence / personal trips.
+      var personalTrips = trips.filter(function (t) { return t && t.category !== 'business'; });
+      function pickPool(source, n) {
+        var pool = source.slice(0, n);
+        var i = 0;
+        while (pool.length < n && source.length) { pool.push(source[i % source.length]); i++; }
+        return pool;
+      }
+      // Draw Ready cards from the full trip set (varied routes) rather than the
+      // 3 business trips, so the story reads as distinct trips arriving, not the
+      // same card repeated. Only ~8 trips exist, so 12 cards still cycle, but
+      // each stack shows different routes and different top cards.
+      var readyGhostPool = pickPool(trips.length ? trips : businessTrips, READY_COUNT);
+      var needsPool      = pickPool(personalTrips.length ? personalTrips : trips, NEEDS_COUNT);
+
+      // Needs-review totals reflect its own 4 trips, not Ready's 12. Computed
+      // from the needs trips + locale meta (rate / unit), so every locale shows
+      // a distinct, correctly-localised potential amount and distance. Potential
+      // amount = distance × rate (what they'd be worth if marked business).
+      var needsMeters    = needsPool.reduce(function (s, t) { return s + ((t && t.distance_meters) || 0); }, 0);
+      var NEEDS_DISTANCE = needsMeters / metersPerUnit;
+      var NEEDS_AMOUNT   = NEEDS_DISTANCE * ratePerUnit;
+      // Per-trip miles/amount, so the pending total can count down as each is approved.
+      var needsPerMiles  = needsPool.map(function (t) { return ((t && t.distance_meters) || 0) / metersPerUnit; });
+      var needsPerAmount = needsPerMiles.map(function (m) { return m * ratePerUnit; });
+
+      // ── DOM refs ──────────────────────────────────────────────────
+      var el = {
+        stage:         document.getElementById('smart-inbox-stage'),
+        scroll:        document.getElementById('anim-inbox-scroll'),
+        list:          document.getElementById('anim-card-list'),
+        alert:         document.getElementById('anim-alert'),
+        alertCount:    document.getElementById('anim-alert-count'),
+        alertSuffix:   document.getElementById('anim-alert-suffix'),
+        alertSubtitle: document.getElementById('anim-alert-subtitle'),
+        alertAmount:   document.getElementById('anim-alert-amount'),
+        alertAmountLabel: document.getElementById('anim-alert-amount-label'),
+        alertDistance: document.getElementById('anim-alert-distance'),
+        alertCta:      document.getElementById('anim-alert-cta'),
+        caughtup:      document.getElementById('anim-caughtup'),
+        caughtupAmount:   document.getElementById('anim-caughtup-amount'),
+        caughtupDistance: document.getElementById('anim-caughtup-distance'),
+        segReady:      document.getElementById('seg-ready'),
+        segNeeds:      document.getElementById('seg-needs'),
+        segReadyCount: document.getElementById('seg-ready-count'),
+        segNeedsCount: document.getElementById('seg-needs-count'),
+        navBadge:      document.getElementById('anim-nav-badge'),
+        ghostLayer:    document.getElementById('anim-ghost-layer'),
+      };
+
+      // ── Card factory (clone from rendered inbox-ready screen) ──────
+      var cardTemplate = null;
+      function getCardTemplate() {
+        if (cardTemplate) return cardTemplate;
+        var screen = DN_LOCALES[currentLocale] && DN_LOCALES[currentLocale].screens
+                   ? DN_LOCALES[currentLocale].screens['inbox-ready'] : '';
+        if (!screen) return null;
+        var tmp = document.createElement('div');
+        tmp.innerHTML = fixAssetPaths(screen);
+        var card = tmp.querySelector('.dn-mockup__trip-card-large');
+        cardTemplate = card || null;
+        return cardTemplate;
+      }
+
+      function formatDistanceNum(meters) {
+        var v = meters / metersPerUnit;
+        return v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace(/\.0$/, '');
+      }
+      function formatAmountNum(meters, category) {
+        if (category !== 'business') return '0.00';
+        return ((meters / metersPerUnit) * ratePerUnit).toFixed(2);
+      }
+
+      function buildCard(trip, idx) {
+        var base = getCardTemplate();
+        if (!base) return null;
+        var card = base.cloneNode(true);
+        card.style.setProperty('--card-index', String(idx));
+        card.setAttribute('data-trip-index', String(idx));
+
+        var img = card.querySelector('.dn-mockup__map-image');
+        if (img && trip.images && trip.images.inbox) {
+          img.src = trip.images.inbox.replace(/^\.\.\//, '/screenkit-anim/');
+        }
+        var names = card.querySelectorAll('.dn-mockup__location-name');
+        var addrs = card.querySelectorAll('.dn-mockup__location-address');
+        if (names[0] && trip.from) names[0].textContent = trip.from.name || '';
+        if (names[1] && trip.to)   names[1].textContent = trip.to.name   || '';
+        if (addrs[0] && trip.from) addrs[0].textContent = trip.from.address || '';
+        if (addrs[1] && trip.to)   addrs[1].textContent = trip.to.address   || '';
+
+        if (typeof trip.distance_meters === 'number') {
+          var rows = card.querySelectorAll('.dn-mockup__map-meta-row');
+          if (rows[0]) {
+            var dn = rows[0].querySelector('.dn-mockup__map-meta-number');
+            var du = rows[0].querySelector('.dn-mockup__map-meta-unit');
+            if (dn) dn.textContent = formatDistanceNum(trip.distance_meters);
+            if (du) du.textContent = unit;
+          }
+          if (rows[1]) {
+            var ac = rows[1].querySelector('.dn-mockup__map-meta-currency');
+            var an = rows[1].querySelector('.dn-mockup__map-meta-number');
+            if (ac) ac.textContent = currency;
+            if (an) an.textContent = formatAmountNum(trip.distance_meters, trip.category);
+          }
+        }
+
+        var opts = card.querySelectorAll('.dn-mockup__category-option');
+        opts.forEach(function (o) { o.setAttribute('data-active', 'false'); });
+        var activeIdx = trip.category === 'business' ? 1 : 0;
+        if (opts[activeIdx]) opts[activeIdx].setAttribute('data-active', 'true');
+        return card;
+      }
+
+      // ── Tap feedback helpers ──────────────────────────────────────
+      function tapPulse(node) {
+        if (!node) return;
+        node.classList.remove('anim-pulse', 'anim-tap');
+        void node.offsetWidth;
+        node.classList.add('anim-pulse', 'anim-tap');
+      }
+      function tick(node) {
+        if (!node) return;
+        node.classList.remove('anim-tick');
+        void node.offsetWidth;
+        node.classList.add('anim-tick');
+      }
+
+      // Stepped numeric tween registered in timers[] so pause/seek work.
+      function tweenNumber(setter, from, to, dur, steps) {
+        steps = steps || 18;
+        for (var i = 1; i <= steps; i++) {
+          (function (i) {
+            schedule(function () {
+              var v = from + (to - from) * (i / steps);
+              setter(v, i === steps);
+            }, Math.round(dur * i / steps));
+          })(i);
+        }
+      }
+
+      // Bounce a badge's size as a trip lands in its tab.
+      function badgeBounce(node) {
+        if (!node) return;
+        node.classList.remove('anim-bounce');
+        void node.offsetWidth;
+        node.classList.add('anim-bounce');
+      }
+
+      // Flying trip cards travel one lane at the phone's vertical center.
+      // Ready = a stack of 3 from the left; needs-review = a single from the
+      // right. Each flyer fades out before its visible edge crosses center,
+      // then removes itself on animationend.
+      function removeOnEnd(node) {
+        node.addEventListener('animationend', function () {
+          if (node.parentNode) node.parentNode.removeChild(node);
+        });
+      }
+      // Flyer = outer element (positions + flies). Inner (.anim-single/.anim-stack)
+      // is scaled to the list card's real size so the hand-off has no resize jump.
+      function launchSingle(side, trip) {
+        var card = buildCard(trip, 0);
+        if (!card) return;
+        var wrap = document.createElement('div');
+        wrap.className = 'anim-flyer anim-flyer--' + side;
+        var sc = document.createElement('div');
+        sc.className = 'anim-single';
+        sc.appendChild(card);
+        wrap.appendChild(sc);
+        el.ghostLayer.appendChild(wrap);
+        removeOnEnd(wrap);
+        return wrap;
+      }
+      function launchStack(side, tripList) {
+        var wrap = document.createElement('div');
+        wrap.className = 'anim-flyer anim-flyer--' + side;
+        var stackEl = document.createElement('div');
+        stackEl.className = 'anim-stack';
+        tripList.forEach(function (trip) {
+          var c = buildCard(trip, 0);
+          if (c) stackEl.appendChild(c);
+        });
+        wrap.appendChild(stackEl);
+        el.ghostLayer.appendChild(wrap);
+        if (side !== 'land') removeOnEnd(wrap);   // landing stacks are removed on hand-off
+        return wrap;
+      }
+
+      // Open a slot at the top of the list for a landing stack: the gap grows
+      // (existing cards slide down) over `growDur`, but the card stays invisible
+      // until revealCard() swaps it in as the flyer lands (no fade).
+      function openSlot(trip, growDur) {
+        var card = buildCard(trip, 0);
+        if (!card) return null;
+        el.list.insertBefore(card, el.list.firstChild);
+        card.style.maxHeight = 'none';
+        var h = card.offsetHeight;
+        card.style.maxHeight = '';
+        card.style.setProperty('--card-h', h + 'px');
+        card.style.transitionDuration = growDur + 'ms';
+        schedule(function () { card.classList.add('is-opening'); }, 30);
+        return card;
+      }
+      function revealCard(card) {
+        if (!card) return;
+        card.style.transition = 'none';             // instant reveal, no fade
+        card.classList.remove('is-opening');
+        card.classList.add('is-in');
+        void card.offsetWidth;
+        card.style.transition = '';
+        card.style.transitionDuration = '';
+      }
+
+      // Grow a card in over --card-dur. Measure its natural height and animate
+      // max-height to exactly that (not a fixed overshoot) so the visible grow
+      // fills the whole duration instead of snapping to full size early.
+      function growIn(card, delay) {
+        card.style.maxHeight = 'none';
+        var h = card.offsetHeight;   // natural height (card is already in the DOM)
+        card.style.maxHeight = '';   // back to the collapsed base state
+        card.style.setProperty('--card-h', h + 'px');
+        schedule(function () { card.classList.add('is-in'); }, delay || 30);
+      }
+      // Materialize a real card at the TOP of the inbox list (newest first).
+      function mountListCard(trip) {
+        var card = buildCard(trip, 0);
+        if (!card) return;
+        el.list.insertBefore(card, el.list.firstChild);
+        growIn(card, 30);
+      }
+
+      // ── State setters ─────────────────────────────────────────────
+      // Nav badge tracks the combined inbox count (Ready + Needs review) live,
+      // and hides when the inbox is empty.
+      var readyShown = 0, needsShown = 0;
+      function refreshNavBadge() {
+        var total = readyShown + needsShown;
+        el.navBadge.textContent = String(total);
+        el.navBadge.style.display = total > 0 ? '' : 'none';
+      }
+      function setSegReady(n)  { readyShown = n; el.segReadyCount.textContent = String(n); refreshNavBadge(); }
+      function setSegNeeds(n)  { needsShown = n; el.segNeedsCount.textContent = String(n); refreshNavBadge(); }
+      function setAlertCount(n){ el.alertCount.textContent = String(n); }
+      function setAmount(v)    { el.alertAmount.textContent = currency + v.toFixed(2); }
+      function setDistance(v)  { el.alertDistance.textContent = v.toFixed(2); }
+      // Caught-up summary counts up from 0 to the approved total.
+      function tallyCaughtUp(amount, distance) {
+        el.caughtupAmount.textContent = currency + '0.00';
+        el.caughtupDistance.textContent = '0.00';
+        tweenNumber(function (v) { el.caughtupAmount.textContent = currency + v.toFixed(2); }, 0, amount, 700, 22);
+        tweenNumber(function (v) { el.caughtupDistance.textContent = v.toFixed(2); }, 0, distance, 700, 22);
+      }
+
+      function activateTab(which) {
+        var readyOn = which === 'ready';
+        el.segReady.classList.toggle('dn-mockup__segment-option--active', readyOn);
+        el.segNeeds.classList.toggle('dn-mockup__segment-option--active', !readyOn);
+      }
+
+      function clearCards() { el.list.innerHTML = ''; }
+
+      // Alert mode: 'ready' (with bulk CTA) or 'needs' (no CTA, potential amount).
+      function setAlertMode(mode) {
+        if (mode === 'needs') {
+          el.alertSuffix.textContent   = strings.needs_review_alert_suffix || 'trips need review';
+          el.alertSubtitle.textContent = strings.needs_review_summary_subtitle || '';
+          el.alertAmountLabel.textContent = strings.potential_amount_label || 'Potential Amount';
+          el.alertCta.style.display = 'none';
+        } else {
+          el.alertSuffix.textContent   = strings.ready_to_review_suffix || 'ready to review';
+          el.alertSubtitle.textContent = strings.ready_summary_subtitle || '';
+          el.alertAmountLabel.textContent = strings.amount_label || 'Amount';
+          el.alertCta.style.display = '';
+        }
+      }
+
+      function enableCta(on) {
+        el.alertCta.classList.toggle('is-disabled', !on);
+      }
+
+      function showCaughtUp(on) {
+        el.caughtup.classList.toggle('is-visible', on);
+        el.scroll.classList.toggle('is-hidden', on);
+      }
+
+      function setCleared(seg, on) {
+        seg.classList.toggle('is-cleared', on);
+      }
+
+      // ── Loop reset → Scene 1 (empty setup) ────────────────────────
+      function resetAll() {
+        clearTimers();
+        activateTab('ready');
+        setCleared(el.segReady, false);
+        setCleared(el.segNeeds, false);
+        setSegReady(0);
+        setSegNeeds(0);
+        setAlertMode('ready');
+        setAlertCount(0);
+        setAmount(0);
+        setDistance(0);
+        enableCta(false);
+        el.alertCta.classList.remove('anim-pulse', 'anim-tap');
+        showCaughtUp(false);
+        el.scroll.classList.remove('is-scrolled');
+        clearCards();
+        if (el.ghostLayer) el.ghostLayer.innerHTML = '';
+        el.caughtupAmount.textContent   = currency + TOTAL_AMOUNT.toFixed(2);
+        el.caughtupDistance.textContent = TOTAL_DISTANCE.toFixed(2);
+      }
+
+      // ── Timeline ──────────────────────────────────────────────────
+      var TOTAL_MS = 27500;
+      var TIMELINE = [];
+
+      function buildTimeline() {
+        TIMELINE = [];
+
+        // Scene 1 (empty setup) is established by resetAll() before every
+        // scheduleFrom(0): at boot, on loop wrap, and on progress seek. Do
+        // NOT push a [0, resetAll] entry here — resetAll() calls clearTimers(),
+        // which would wipe the very timeline scheduleFrom() just scheduled.
+
+        // ── Scene 2 — trips arrive one entry at a time ──────────────
+        // Ready trips arrive as a STACK of 3 (24px fan) from the left; the
+        // paired needs-review trip arrives as a SINGLE card from the right.
+        // Only one entry is on screen at a time: each stack fully completes
+        // before its single enters. 4 pairs → 12 ready + 4 needs.
+        clearCards();
+        var arriveStart = 900;
+        var entryDur    = 1400;                       // fly-in duration (= --ghost-dur)
+        var gap         = 160;                        // empty pause between entries
+        // Mount AFTER the flyer has fully faded (opacity hits 0 at 78% of the
+        // fly keyframe). Mounting earlier let the fading ghost sit on top of the
+        // list and hide the card's grow-in, making the entrance look rapid.
+        var landAt      = Math.round(entryDur * 0.85);
+
+        var t = arriveStart;
+        for (var p = 0; p < 4; p++) {
+          (function (p, tStack) {
+            var trips = [readyGhostPool[p * 3], readyGhostPool[p * 3 + 1], readyGhostPool[p * 3 + 2]];
+            var frontTrip = trips[2];          // the front (top) card that lands
+            var refs = {};
+            // Stack flies in and lands at the slot (no fade for the front card).
+            TIMELINE.push([tStack, function () { refs.ghost = launchStack('land', trips); }]);
+            // Open the slot over the fly: existing cards slide down at the same
+            // time, leaving vacant space for the front card to continue into.
+            TIMELINE.push([tStack + 40, function () { refs.card = openSlot(frontTrip, entryDur); }]);
+            // Landing: reveal the real card in place (instant, no fade) and drop
+            // the ghost, then step the counts/amount for the 3 trips.
+            TIMELINE.push([tStack + entryDur, function () {
+              revealCard(refs.card);
+              if (refs.ghost && refs.ghost.parentNode) refs.ghost.parentNode.removeChild(refs.ghost);
+              var done = (p + 1) * 3;
+              setSegReady(done); setAlertCount(done);
+              setAmount(TOTAL_AMOUNT * (p + 1) / 4);
+              setDistance(TOTAL_DISTANCE * (p + 1) / 4);
+              badgeBounce(el.segReadyCount);
+              if (p === 0) enableCta(true);
+            }]);
+          })(p, t);
+          t += entryDur + gap;
+
+          (function (p, tSingle) {
+            TIMELINE.push([tSingle, function () { launchSingle('needs', needsPool[p]); }]);
+            TIMELINE.push([tSingle + landAt, function () {
+              setSegNeeds(p + 1); badgeBounce(el.segNeedsCount);
+            }]);
+          })(p, t);
+          t += entryDur + gap;
+        }
+        var arrivalsEnd = t;
+
+        // Amount + miles jump per stack (handled in each stack's landing above),
+        // so no smooth tween here.
+
+        // Settle: lock definitive end-of-arrival state (keeps seek consistent).
+        var settleT = arrivalsEnd + 200;
+        TIMELINE.push([settleT, function () {
+          setSegReady(READY_COUNT); setSegNeeds(NEEDS_COUNT); setAlertCount(READY_COUNT);
+          setAmount(TOTAL_AMOUNT); setDistance(TOTAL_DISTANCE); enableCta(true);
+        }]);
+
+        // ── Scene 3 — dwell, then tap "Mark all as reviewed" ────────
+        var markT = settleT + 1100;
+        TIMELINE.push([markT, function () { tapPulse(el.alertCta); }]);
+
+        // ── Scene 4 — Ready cleared → caught up ─────────────────────
+        TIMELINE.push([markT + 320, function () {
+          el.list.querySelectorAll('.dn-mockup__trip-card-large').forEach(function (c, i) {
+            schedule(function () { c.classList.add('is-reviewed'); }, i * 60);
+          });
+          setSegReady(0); badgeBounce(el.segReadyCount);
+        }]);
+        TIMELINE.push([markT + 1000, function () {
+          setCleared(el.segReady, true);
+          showCaughtUp(true);
+          tallyCaughtUp(TOTAL_AMOUNT, TOTAL_DISTANCE);
+        }]);
+
+        // ── Scene 5 — tap Needs review, mark trips one by one ───────
+        var needsTabT = markT + 3600;   // dwell on caught-up first
+        TIMELINE.push([needsTabT, function () {
+          tapPulse(el.segNeeds);
+          activateTab('needs');
+          showCaughtUp(false);
+          setAlertMode('needs');
+          setAlertCount(NEEDS_COUNT);
+          setAmount(NEEDS_AMOUNT);        // 4-trip potential total, not Ready's 12-trip total
+          setDistance(NEEDS_DISTANCE);
+          // Mount the 4 needs-review cards, staggered rise-in.
+          clearCards();
+          needsPool.forEach(function (trip, i) {
+            var card = buildCard(trip, i);
+            if (!card) return;
+            el.list.appendChild(card);
+            growIn(card, 120 + i * 90);
+          });
+        }]);
+
+        // Swipe the list up so the top card's "Mark as reviewed" button clears
+        // the fold before the review begins (measured at runtime → locale-robust).
+        var swipeT = needsTabT + 1250;
+        TIMELINE.push([swipeT, function () {
+          var cards = el.list.querySelectorAll('.dn-mockup__trip-card-large');
+          var btn = cards[0] && cards[0].querySelector('.dn-mockup__btn-review');
+          if (btn) {
+            var vr = el.scroll.getBoundingClientRect();
+            var scale = el.scroll.clientHeight > 0 ? vr.height / el.scroll.clientHeight : 1;
+            var over = btn.getBoundingClientRect().bottom - vr.bottom;   // rendered px below fold
+            var localDelta = over > 0 ? Math.round(over / scale + 28) : 0; // +28px local breathing room
+            el.scroll.style.setProperty('--needs-scroll-y', '-' + localDelta + 'px');
+          }
+          el.scroll.classList.add('is-scrolled');
+        }]);
+
+        // Review one-by-one: pulse the card CTA, fade + collapse, tick down.
+        var reviewT = needsTabT + 2400;
+        for (var i = 0; i < NEEDS_COUNT; i++) {
+          (function (i) {
+            var stepT = reviewT + i * 1150;
+            TIMELINE.push([stepT, function () {
+              var card = el.list.querySelectorAll('.dn-mockup__trip-card-large')[i];
+              if (card) tapPulse(card.querySelector('.dn-mockup__btn-review'));
+            }]);
+            TIMELINE.push([stepT + 240, function () {
+              var card = el.list.querySelectorAll('.dn-mockup__trip-card-large')[i];
+              if (card) card.classList.add('is-reviewed');
+              var left = NEEDS_COUNT - (i + 1);
+              setSegNeeds(left);
+              setAlertCount(left);   // title counts down with the badge: 4 → 3 → 2 → 1
+              // Pending potential amount + miles drop by the approved trips (the
+              // ones already gone). Computed absolutely so it's loop/seek-safe.
+              var remA = 0, remM = 0;
+              for (var j = i + 1; j < NEEDS_COUNT; j++) { remA += needsPerAmount[j]; remM += needsPerMiles[j]; }
+              setAmount(remA);
+              setDistance(remM);
+              badgeBounce(el.segNeedsCount);
+            }]);
+          })(i);
+        }
+
+        // ── Scene 6 — Needs review caught up ────────────────────────
+        var needsDoneT = reviewT + NEEDS_COUNT * 1150 + 500;
+        TIMELINE.push([needsDoneT, function () {
+          setCleared(el.segNeeds, true);
+          showCaughtUp(true);
+          // Summary tallies back up to the approved total (the 4 needs trips).
+          tallyCaughtUp(NEEDS_AMOUNT, NEEDS_DISTANCE);
+        }]);
+
+        // Loop handled by scheduleFrom's TOTAL_MS wrap.
+      }
+
+      // ── Playback state ────────────────────────────────────────────
+      var rafId = null, isPlaying = true, startTime = 0, pausedAt = 0;
+      var progressFill  = document.getElementById('anim-progress-fill');
+      var progressTrack = document.getElementById('anim-progress-track');
+      var playpauseBtn  = document.getElementById('ctrl-playpause');
+      var ctrlIcon      = document.getElementById('ctrl-icon');
+      var ctrlLabel     = document.getElementById('ctrl-label');
+
+      function scheduleFrom(offsetMs) {
+        TIMELINE.forEach(function (entry) {
+          var delay = entry[0] - offsetMs;
+          if (delay >= 0) schedule(entry[1], delay);
+        });
+        schedule(function () {
+          resetAll();
+          scheduleFrom(0);
+          startTime = Date.now();
+        }, TOTAL_MS - offsetMs);
+      }
+
+      function tickProgress() {
+        if (!isPlaying) return;
+        var elapsed = (Date.now() - startTime) % TOTAL_MS;
+        progressFill.style.width = (elapsed / TOTAL_MS * 100).toFixed(2) + '%';
+        rafId = requestAnimationFrame(tickProgress);
+      }
+
+      function play(offsetMs) {
+        offsetMs = offsetMs || 0;
+        startTime = Date.now() - offsetMs;
+        scheduleFrom(offsetMs);
+        isPlaying = true;
+        setPlayIcon(false);
+        tickProgress();
+      }
+      function pause() {
+        pausedAt = (Date.now() - startTime) % TOTAL_MS;
+        clearTimers();
+        cancelAnimationFrame(rafId);
+        isPlaying = false;
+        setPlayIcon(true);
+      }
+      function restart() {
+        clearTimers();
+        cancelAnimationFrame(rafId);
+        resetAll();
+        pausedAt = 0;
+        play(0);
+      }
+      function setPlayIcon(showPlay) {
+        if (showPlay) {
+          ctrlIcon.innerHTML = '<polygon points="2,1.5 10.5,6 2,10.5"/>';
+          ctrlLabel.textContent = 'Play';
+        } else {
+          ctrlIcon.innerHTML = '<rect x="1.5" y="1.5" width="3.5" height="9" rx="1"/><rect x="7" y="1.5" width="3.5" height="9" rx="1"/>';
+          ctrlLabel.textContent = 'Pause';
+        }
+      }
+
+      playpauseBtn.addEventListener('click', function () {
+        if (isPlaying) pause(); else play(pausedAt);
+      });
+      document.getElementById('ctrl-restart').addEventListener('click', restart);
+      progressTrack.addEventListener('click', function (e) {
+        var rect = progressTrack.getBoundingClientRect();
+        var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        clearTimers();
+        cancelAnimationFrame(rafId);
+        resetAll();
+        play(pct * TOTAL_MS);
+      });
+
+      // ── Boot ──────────────────────────────────────────────────────
+      // Align the flying stack's lane with the real first list-card slot, so a
+      // stack lands directly into its place instead of at the phone's center.
+      // Measured at runtime (robust to alert height, fonts, and locale).
+      function alignFlyerLane() {
+        if (!el.ghostLayer || !el.list) return;
+        // In embed (?preview) mode the canvas is transform:scaled to fit the host
+        // via a container query. getBoundingClientRect returns post-transform
+        // pixels, but the flyer vars below are consumed in the canvas's
+        // pre-transform local space. Divide every measured length by the canvas
+        // scale so the vars stay local. s === 1 when not embedded (no transform),
+        // so this is a no-op in the standalone authoring page.
+        var canvasEl = document.getElementById('anim-canvas');
+        var s = (canvasEl && canvasEl.offsetWidth > 0)
+          ? canvasEl.getBoundingClientRect().width / canvasEl.offsetWidth : 1;
+        if (!s) s = 1;
+        var lr = el.list.getBoundingClientRect(), gr = el.ghostLayer.getBoundingClientRect();
+        var gw   = gr.width / s;                          // ghost-layer width (local)
+        var top  = Math.round((lr.top - gr.top) / s);
+        var left = Math.round((lr.left - gr.left) / s);
+        // Scale the flying cards (358px wide) down to the list card's real
+        // displayed width so they hand off with no resize.
+        var scale = lr.width > 0 ? (lr.width / s) / 358 : 1;
+        el.ghostLayer.style.setProperty('--flyer-scale', scale.toFixed(4));
+        if (top > 40) el.ghostLayer.style.setProperty('--flyer-top', top + 'px');
+        // Landing x: the front card sits at the 128px fan offset (scaled), so the
+        // flyer must stop that far short to put the front card on the slot.
+        if (left > 0) el.ghostLayer.style.setProperty('--land-x', Math.round(left - 128 * scale) + 'px');
+        // Needs single: top-align to the "Needs review" segment, rest just off the
+        // phone's right edge (in the margin), then shrink + drift into the segment.
+        // Flyer box is 358px wide (right:0 anchor), transform-origin top-left, so
+        // the card's left edge = canvasRight + translateX - 358.
+        if (el.segNeeds && el.segNeedsCount) {
+          var sr = el.segNeeds.getBoundingClientRect();
+          var br = el.segNeedsCount.getBoundingClientRect();
+          var segEndX = (sr.right - gr.left) / s;               // end of the segment control (local)
+          var badgeCX = ((br.left + br.right) / 2 - gr.left) / s; // Needs-review badge centre (local)
+          var restX   = (badgeCX + segEndX) / 2;                // stop up halfway between them
+          el.ghostLayer.style.setProperty('--seg-top', Math.round((sr.top - gr.top) / s) + 'px');
+          el.ghostLayer.style.setProperty('--needs-rest', Math.round(restX - gw + 358) + 'px');
+          el.ghostLayer.style.setProperty('--needs-end', Math.round(badgeCX - gw + 358) + 'px');
+        }
+      }
+
+      function boot() {
+        injectSprite();
+        applyLocale(document.body);
+        resetAll();
+        alignFlyerLane();
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(alignFlyerLane);
+
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          setPlayIcon(true);
+          isPlaying = false;
+          return;
+        }
+        buildTimeline();
+        play(0);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+
+      // ── Frame / Shadow / Locale dropdowns ─────────────────────────
+      var FRAME_PRESETS  = window.DN_FRAME_PRESETS;
+      var SHADOW_PRESETS  = window.DN_SHADOW_PRESETS;
+      var applyVars       = window.dnApplyFrameVars;
+      applyVars(FRAME_PRESETS['glass']);
+      applyVars(SHADOW_PRESETS['gentle']);
+
+      var openDropdowns = [];
+      function buildDropdown(opts) {
+        var rootEl  = document.getElementById(opts.rootId);
+        var trigger = document.getElementById(opts.triggerId);
+        var current = document.getElementById(opts.currentId);
+        var menu    = document.getElementById(opts.menuId);
+        var value   = opts.initial;
+        var alwaysActive = opts.alwaysActive === true;
+        var defaultValue = opts.defaultValue;
+        function renderMenu() {
+          menu.innerHTML = '';
+          opts.items.forEach(function (item) {
+            var li = document.createElement('li');
+            li.dataset.value = item.value;
+            li.className = 'px-4 py-2 text-base font-medium text-white cursor-pointer hover:bg-glass-item-hover whitespace-nowrap';
+            li.textContent = item.label;
+            if (item.value === value) li.classList.add('bg-glass-item-hover');
+            menu.appendChild(li);
+          });
+          current.textContent = (opts.items.find(function (i) { return i.value === value; }) || {}).label || '';
+          trigger.classList.toggle('is-active', alwaysActive || value !== defaultValue);
+        }
+        function open()  { menu.classList.remove('hidden'); }
+        function close() { menu.classList.add('hidden');    }
+        trigger.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var willOpen = menu.classList.contains('hidden');
+          openDropdowns.forEach(function (d) { d.close(); });
+          if (willOpen) open();
+        });
+        menu.addEventListener('click', function (e) {
+          var li = e.target.closest('[data-value]');
+          if (!li) return;
+          value = li.dataset.value;
+          renderMenu();
+          close();
+          opts.onChange(value);
+        });
+        var api = { close: close, contains: function (n) { return rootEl.contains(n); } };
+        openDropdowns.push(api);
+        renderMenu();
+        return api;
+      }
+      document.addEventListener('click', function (e) {
+        openDropdowns.forEach(function (d) { if (!d.contains(e.target)) d.close(); });
+      });
+
+      buildDropdown({
+        rootId: 'frame-dropdown', triggerId: 'frame-trigger', currentId: 'frame-current',
+        menuId: 'frame-menu', initial: 'glass', defaultValue: 'naked',
+        items: [
+          { value: 'naked',       label: 'Device'      },
+          { value: 'glass',       label: 'Glass'       },
+          { value: 'white',       label: 'White'       },
+          { value: 'space-black', label: 'Space Black' },
+          { value: 'starlight',   label: 'Starlight'   },
+        ],
+        onChange: function (v) { applyVars(FRAME_PRESETS[v]); },
+      });
+      buildDropdown({
+        rootId: 'shadow-dropdown', triggerId: 'shadow-trigger', currentId: 'shadow-current',
+        menuId: 'shadow-menu', initial: 'gentle', defaultValue: 'none',
+        items: [
+          { value: 'none',   label: 'Shadow' },
+          { value: 'faint',  label: 'Faint'  },
+          { value: 'bare',   label: 'Bare'   },
+          { value: 'gentle', label: 'Gentle' },
+          { value: 'float',  label: 'Float'  },
+        ],
+        onChange: function (v) { applyVars(SHADOW_PRESETS[v]); },
+      });
+      buildDropdown({
+        rootId: 'locale-dropdown', triggerId: 'locale-trigger', currentId: 'locale-current',
+        menuId: 'locale-menu', initial: currentLocale, alwaysActive: true,
+        items: Object.keys(DN_LOCALES).map(function (l) { return { value: l, label: l }; }),
+        onChange: function (v) {
+          var qs = new URLSearchParams(window.location.search);
+          qs.set('locale', v);
+          window.location.search = '?' + qs.toString();
+        },
+      });
+    })();
+  </script>
+</body>
+</html>

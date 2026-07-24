@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driversnote Welcome JTBD Animation</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="phone-mockup.css">
+  <link rel="stylesheet" href="tailwind.built.css">
+
+  <!-- Preview mode is hard-coded on the body element. Hides chrome only; keeps the native 393x844 layout the welcome wrapper expects. -->
+  <style>
+    html, body.is-preview { margin: 0; background: transparent; }
+    body.is-preview > nav,
+    body.is-preview > header { display: none !important; }
+    body.is-preview > main {
+      padding: 40px !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    body.is-preview > main > *:not(:first-child) { display: none !important; }
+    body.is-preview > main > .bg-mist {
+      background: transparent !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+    }
+  </style>
+
+  <!-- Frame and shadow tokens are owned by src/frame-presets.js (loaded below).
+       The :root block below only declares fallbacks so the bezel paints before
+       the JS runs; src/frame-presets.js overwrites these via dnApplyFrameVars()
+       on boot. Do NOT redeclare the FRAME_PRESETS / SHADOW_PRESETS objects on
+       this page; they live in src/frame-presets.js. -->
+  <style>
+    :root {
+      --demo-bezel-bg:       rgba(255, 255, 255, 0.12);
+      --demo-bezel-filter:   blur(20px) saturate(180%);
+      --demo-bezel-border:   1px solid rgba(255, 255, 255, 0.25);
+      --demo-bezel-padding:  calc(100cqi * 8 / 390);
+      --demo-bezel-rim:      inset 0 1px 0 rgba(255,255,255,0.60), inset 0 -1px 0 rgba(255,255,255,0.10);
+      --demo-refraction:     linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.08) 100%);
+      --demo-shadow-outer:   0 8px 24px rgba(0,0,0,0.18);
+    }
+    body .dn-mockup--framed .dn-mockup__bezel {
+      background:              var(--demo-bezel-bg)      !important;
+      border:                  var(--demo-bezel-border)  !important;
+      padding:                 var(--demo-bezel-padding) !important;
+      box-shadow:              var(--demo-shadow-outer), var(--demo-bezel-rim) !important;
+    }
+    /* backdrop-filter lives on the bezel's ::after pseudo per
+       src/phone-mockup.css to avoid the rectangular-corner bleed bug. */
+    body .dn-mockup--framed .dn-mockup__bezel::before {
+      background: var(--demo-refraction) !important;
+    }
+
+    /* Solid floor so the glass bezel never shows through during fades */
+    .dn-mockup__screen {
+      background-color: var(--dn-color-bg-screen);
+    }
+
+    /* ── Scene stacking (matches hero pattern) ─────────────────────── */
+    .dn-mockup__stage {
+      opacity: 0;
+      transition: opacity 1.0s ease;
+    }
+    .dn-mockup__stage.is-visible {
+      opacity: 1;
+    }
+
+    /* ── Scene 1: Tracking ───────────────────────────────────────────
+       Header icon spin, ellipsis dots, and pulse pin are owned by the
+       canonical tracking mockup (src/phone-mockup.css + tracking.html).
+       This scene just mounts the rendered tracking screen and they run. */
+
+
+    /* ── Scene 2: Inbox ─────────────────────────────────────────────
+       Cards are injected at runtime into #scene-inbox-list. Each card
+       carries --card-index so the shared phone-mockup.css stagger fires.
+       Reviewed cards fade out and collapse so cards below shift up.
+       Spacing matches the canonical .dn-mockup__inbox-scroll: viewport
+       starts flush with the bottom of the inbox-title-row at stage
+       y=114, list has 16 px padding around the cards and a 16 px gap
+       between cards. */
+    #scene-inbox-viewport {
+      position: absolute;
+      top: 114px;
+      left: 0;
+      right: 0;
+      bottom: 83px;
+      overflow: hidden;
+    }
+    #scene-inbox-list {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      /* No flex gap inside the welcome animation. Cards carry their
+         own bottom margin so that .is-reviewed can collapse the margin
+         alongside max-height without exposing a residual grey strip
+         from the stage background between cards. */
+      gap: 0;
+      transition: transform 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      will-change: transform;
+    }
+    #scene-inbox-list .dn-mockup__trip-card-large {
+      /* Disable the canonical dn-card-mount keyframe so opacity and
+         transform stay transition-controlled. Mount the card via
+         transition with a --card-index stagger, mirroring the
+         original keyframe's intent. Card fade-out (.is-reviewed)
+         leads (0-400ms); collapse follows (300-700ms) so the next
+         card only starts rising once the reviewed card is ~75% out. */
+      animation: none;
+      opacity: 0;
+      transform: translateY(8px);
+      transition:
+        opacity       0.55s ease,
+        transform     0.55s ease,
+        margin-bottom 0.55s ease 0.4s,
+        max-height    0.55s ease 0.4s;
+      transition-delay: calc(var(--card-index, 0) * 60ms);
+      max-height: 600px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    #scene-inbox.is-visible #scene-inbox-list .dn-mockup__trip-card-large {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    /* Must outrank the #scene-inbox.is-visible parent rule above,
+       otherwise the parent's opacity:1 keeps the card visible. */
+    #scene-inbox.is-visible #scene-inbox-list .dn-mockup__trip-card-large.is-reviewed {
+      /* Clear the mount delay so fade-out fires immediately when the
+         class lands, regardless of card-index. */
+      transition-delay: 0s;
+      opacity: 0;
+      transform: translateY(-8px);
+      max-height: 0;
+      margin-bottom: 0;
+      pointer-events: none;
+    }
+    /* Recategorise gesture: en-US uses colour-only chip state swap.
+       Active goes dark green, deactivating chip drops to grey. ROTW
+       variants use the icon-swap baked into the template. */
+    #scene-inbox-list .anim-recategorising .dn-mockup__category-option[data-active="true"] {
+      transition: color 0.35s ease, background-color 0.35s ease;
+    }
+
+    /* Single tap-pulse on the recategorise business chip so the
+       category swap reads as a deliberate tap, not a CSS state flip. */
+    @keyframes anim-chip-pulse {
+      0%   { transform: scale(1); }
+      45%  { transform: scale(0.94); }
+      100% { transform: scale(1); }
+    }
+    #scene-inbox-list .dn-mockup__category-option.anim-pulse {
+      animation: anim-chip-pulse 380ms cubic-bezier(0.34, 1.1, 0.64, 1);
+      transform-origin: center;
+    }
+
+    /* Tap feedback on the per-card Mark-as-reviewed CTA before the
+       card fades out. Reads as a press: brief scale-down + darker bg. */
+    @keyframes anim-btn-pulse {
+      0%   { transform: scale(1);    filter: brightness(1); }
+      40%  { transform: scale(0.97); filter: brightness(0.92); }
+      100% { transform: scale(1);    filter: brightness(1); }
+    }
+    #scene-inbox-list .dn-mockup__btn-review {
+      position: relative;
+      overflow: hidden;
+    }
+    #scene-inbox-list .dn-mockup__btn-review.anim-pulse {
+      animation: anim-btn-pulse 260ms ease-out;
+      transform-origin: center;
+    }
+    /* Material-style tap ripple: filled circle scales out from button
+       center, fades to zero. Reads as a deliberate tap, not a CSS state
+       change. Pairs with anim-pulse on the same keyframe. */
+    @keyframes anim-tap-ripple {
+      0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0.65; }
+      100% { transform: translate(-50%, -50%) scale(3);   opacity: 0; }
+    }
+    #scene-inbox-list .dn-mockup__btn-review.anim-tap::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.55);
+      pointer-events: none;
+      animation: anim-tap-ripple 500ms ease-out forwards;
+    }
+
+    /* Counter tick: brief upscale + brand-tint when value decrements. */
+    @keyframes anim-count-tick {
+      0%   { transform: scale(1);    color: inherit; }
+      40%  { transform: scale(1.18); color: var(--dn-color-brand); }
+      100% { transform: scale(1);    color: inherit; }
+    }
+    #anim-inbox-count.anim-tick {
+      animation: anim-count-tick 360ms ease-out;
+      transform-origin: center;
+    }
+
+    /* ── Scene 3: Report ────────────────────────────────────────────
+       The rendered report screen uses position:absolute for its top
+       bar, scroll area, and nav bar. We mount its innerHTML directly
+       inside #scene-report (the stage) so its absolute children have
+       a positioned ancestor with the correct 390x844 dimensions.
+       Simulated scroll is driven by translateY on the report-scroll
+       inner div, not on a wrapper. */
+    #scene-report .dn-mockup__report-scroll {
+      transition: transform 1.2s cubic-bezier(0.32, 0.72, 0.32, 1);
+      will-change: transform;
+    }
+    /* Send icon tap feedback */
+    #anim-send-icon {
+      transition: opacity 0.18s ease;
+      cursor: default;
+    }
+    #anim-send-icon.is-tapped {
+      opacity: 0.65;
+    }
+
+    /* ── Scene 4: Send-report modal overlay ─────────────────────────
+       The 4.2 Send Report mockup's modal is mounted into #scene-modal
+       at boot. We override its default always-visible state so the
+       animation can fade the backdrop in, slide the modal up, then
+       slide the modal off to the right on send. The modal markup,
+       layout, fields, and typography come straight from the mockup. */
+    #scene-modal {
+      position: absolute;
+      inset: 0;
+      width: 390px;
+      height: 844px;
+      transform-origin: top left;
+      transform: scale(calc(100cqi / 390px));
+      pointer-events: none;
+      z-index: 30;
+    }
+    #scene-modal .dn-mockup__modal-overlay {
+      opacity: 0;
+      background: rgba(0, 0, 0, 0);
+      transition: background-color 0.35s ease, opacity 0.35s ease;
+    }
+    #scene-modal.is-modal-visible .dn-mockup__modal-overlay {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    #scene-modal .dn-mockup__modal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.34, 1.1, 0.64, 1);
+    }
+    #scene-modal.is-modal-visible .dn-mockup__modal {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #scene-modal.is-modal-exiting .dn-mockup__modal {
+      opacity: 0;
+      transform: translateY(0);
+      transition: opacity 0.4s ease;
+    }
+    #scene-modal.is-modal-exiting .dn-mockup__modal-overlay {
+      opacity: 0;
+      background: rgba(0, 0, 0, 0);
+      transition: background-color 0.4s ease 0.1s, opacity 0.4s ease 0.1s;
+    }
+
+    /* Typewriter text fills the modal's name + email inputs and the
+       note textarea. Inputs in the static mockup are empty divs; the
+       animation injects a child <span class="anim-typed"> with the
+       typed text plus a blinking cursor. */
+    #scene-modal .anim-typed-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 14px;
+      color: var(--dn-color-content-primary);
+    }
+    #scene-modal .dn-mockup__modal-textarea .anim-typed-wrap {
+      align-items: flex-start;
+      padding: 0;
+      position: static;
+    }
+    #scene-modal .anim-cursor {
+      color: var(--dn-color-brand);
+      animation: anim-blink 0.75s step-end infinite;
+      margin-left: 1px;
+      display: none;
+    }
+    #scene-modal .anim-field-active .anim-cursor {
+      display: inline;
+    }
+    @keyframes anim-blink {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0; }
+    }
+    /* Active field gets a 2px primary border (matches CLAUDE.md note rule) */
+    #scene-modal .dn-mockup__modal-input,
+    #scene-modal .dn-mockup__modal-textarea {
+      position: relative;
+      transition: border-color 0.2s ease, border-width 0.2s ease;
+    }
+    #scene-modal .anim-field-active.dn-mockup__modal-input,
+    #scene-modal .anim-field-active.dn-mockup__modal-textarea {
+      border: 2px solid var(--dn-color-primary);
+    }
+    /* Hide the static textarea placeholder while typing into the textarea */
+    #scene-modal .anim-field-active .dn-mockup__modal-textarea-placeholder,
+    #scene-modal .anim-field-filled .dn-mockup__modal-textarea-placeholder {
+      opacity: 0;
+    }
+    /* Send button press feedback */
+    #scene-modal .dn-mockup__modal-btn-send {
+      transition: opacity 0.15s ease;
+    }
+    #scene-modal .dn-mockup__modal-btn-send.is-pressed {
+      opacity: 0.8;
+    }
+
+    /* ── Reduced motion: skip the loop, show Scene 1 as static poster ── */
+    @media (prefers-reduced-motion: reduce) {
+      #scene-tracking { opacity: 1 !important; }
+    }
+
+    /* ── Playback controls (same component as website-hero) ─────────── */
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 7px 16px;
+      border-radius: 9999px;
+      border: 1px solid var(--color-graphite);
+      background: transparent;
+      color: var(--color-midnight-forest);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+    .ctrl-btn:hover {
+      background: var(--color-mist);
+      border-color: var(--color-midnight-forest);
+    }
+    .anim-progress-track {
+      width: 393px;
+      height: 4px;
+      background: var(--color-slate-shadow);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+    .anim-progress-fill {
+      height: 100%;
+      background: var(--color-midnight-forest);
+      border-radius: inherit;
+      width: 0%;
+    }
+    .anim-scene-labels {
+      width: 393px;
+      display: flex;
+      margin-top: 7px;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      color: var(--color-graphite);
+    }
+    .anim-scene-labels span { flex: 1; }
+  </style>
+</head>
+<body class="font-sans bg-pure-canvas text-midnight-forest min-h-screen is-preview">
+
+  <!-- ══════════════════════════════════════════════════════════════
+       GLOBAL NAV (same as website-hero / library)
+  ═══════════════════════════════════════════════════════════════════ -->
+  <nav class="bg-pure-canvas">
+    <div class="grid grid-cols-3 items-center px-20 h-20 max-w-[1600px] mx-auto">
+      <!-- Logo -->
+      <a href="../library.html" class="flex items-center" aria-label="Driversnote">
+        <img src="../assets/logo.svg" alt="Driversnote" class="size-10" />
+      </a>
+
+      <!-- Center links -->
+      <div class="flex items-center justify-center gap-[32px] text-base font-semibold">
+        <a href="../library.html"
+           class="text-ash hover:text-midnight-forest transition-colors duration-150">Mockups</a>
+        <a href="../animation.html" class="text-midnight-forest">Animations</a>
+      </div>
+
+      <!-- Routes icon + hover tooltip -->
+      <div class="flex justify-end">
+        <a href="../map-route-editor-v2.html"
+           class="group relative inline-flex items-center justify-center size-8"
+           aria-label="Routes">
+          <img src="../assets/route-icon.svg" alt="" class="size-8" />
+          <span class="pointer-events-none absolute top-full left-1/2 mt-3
+                       flex items-center h-7 px-2 rounded-lg
+                       bg-midnight-forest text-pure-canvas text-xs font-semibold whitespace-nowrap
+                       opacity-0 -translate-x-1/2
+                       transition-opacity duration-200 ease-out
+                       group-hover:opacity-100">
+            Routes
+          </span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PAGE ACTIONS (same component as website-hero)
+  ═══════════════════════════════════════════════════════════════════ -->
+  <header class="bg-pure-canvas">
+    <div class="flex items-center justify-between gap-4 px-20 pt-10 pb-3 max-w-[1600px] mx-auto">
+
+      <!-- LEFT: Frame · Shadow | Locale -->
+      <div class="flex items-center">
+
+        <div class="flex items-center gap-2">
+          <!-- Frame dropdown -->
+          <div class="relative" id="frame-dropdown">
+            <button type="button" id="frame-trigger" class="dropdown-trigger">
+              <span id="frame-current">Device</span>
+              <svg id="frame-chevron" class="size-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path fill="currentColor" d="M12 14.975C11.8667 14.975 11.7417 14.9542 11.625 14.9125C11.5084 14.8709 11.4 14.8 11.3 14.7L6.70005 10.1C6.51672 9.91672 6.42505 9.68338 6.42505 9.40005C6.42505 9.11672 6.51672 8.88338 6.70005 8.70005C6.88338 8.51672 7.11672 8.42505 7.40005 8.42505C7.68338 8.42505 7.91672 8.51672 8.10005 8.70005L12 12.6L15.9 8.70005C16.0834 8.51672 16.3167 8.42505 16.6 8.42505C16.8834 8.42505 17.1167 8.51672 17.3 8.70005C17.4834 8.88338 17.575 9.11672 17.575 9.40005C17.575 9.68338 17.4834 9.91672 17.3 10.1L12.7 14.7C12.6 14.8 12.4917 14.8709 12.375 14.9125C12.2584 14.9542 12.1334 14.975 12 14.975Z"/>
+              </svg>
+            </button>
+            <ul id="frame-menu"
+                class="hidden absolute top-full left-0 mt-2 z-50 min-w-full py-2
+                       bg-glass-bg backdrop-blur-[24px] backdrop-saturate-150 rounded-2xl
+                       shadow-[0_12px_80px_rgba(0,0,0,0.16)] whitespace-nowrap"></ul>
+          </div>
+
+          <!-- Shadow dropdown -->
+          <div class="relative" id="shadow-dropdown">
+            <button type="button" id="shadow-trigger" class="dropdown-trigger">
+              <span id="shadow-current">Shadow</span>
+              <svg id="shadow-chevron" class="size-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path fill="currentColor" d="M12 14.975C11.8667 14.975 11.7417 14.9542 11.625 14.9125C11.5084 14.8709 11.4 14.8 11.3 14.7L6.70005 10.1C6.51672 9.91672 6.42505 9.68338 6.42505 9.40005C6.42505 9.11672 6.51672 8.88338 6.70005 8.70005C6.88338 8.51672 7.11672 8.42505 7.40005 8.42505C7.68338 8.42505 7.91672 8.51672 8.10005 8.70005L12 12.6L15.9 8.70005C16.0834 8.51672 16.3167 8.42505 16.6 8.42505C16.8834 8.42505 17.1167 8.51672 17.3 8.70005C17.4834 8.88338 17.575 9.11672 17.575 9.40005C17.575 9.68338 17.4834 9.91672 17.3 10.1L12.7 14.7C12.6 14.8 12.4917 14.8709 12.375 14.9125C12.2584 14.9542 12.1334 14.975 12 14.975Z"/>
+              </svg>
+            </button>
+            <ul id="shadow-menu"
+                class="hidden absolute top-full left-0 mt-2 z-50 min-w-full py-2
+                       bg-glass-bg backdrop-blur-[24px] backdrop-saturate-150 rounded-2xl
+                       shadow-[0_12px_80px_rgba(0,0,0,0.16)] whitespace-nowrap"></ul>
+          </div>
+        </div>
+
+        <div class="w-px h-9 bg-fog mx-6"></div>
+
+        <!-- Locale dropdown -->
+        <div class="relative" id="locale-dropdown">
+          <button type="button" id="locale-trigger" class="dropdown-trigger">
+            <span id="locale-current">en-US</span>
+            <svg id="locale-chevron" class="size-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path fill="currentColor" d="M12 14.975C11.8667 14.975 11.7417 14.9542 11.625 14.9125C11.5084 14.8709 11.4 14.8 11.3 14.7L6.70005 10.1C6.51672 9.91672 6.42505 9.68338 6.42505 9.40005C6.42505 9.11672 6.51672 8.88338 6.70005 8.70005C6.88338 8.51672 7.11672 8.42505 7.40005 8.42505C7.68338 8.42505 7.91672 8.51672 8.10005 8.70005L12 12.6L15.9 8.70005C16.0834 8.51672 16.3167 8.42505 16.6 8.42505C16.8834 8.42505 17.1167 8.51672 17.3 8.70005C17.4834 8.88338 17.575 9.11672 17.575 9.40005C17.575 9.68338 17.4834 9.91672 17.3 10.1L12.7 14.7C12.6 14.8 12.4917 14.8709 12.375 14.9125C12.2584 14.9542 12.1334 14.975 12 14.975Z"/>
+            </svg>
+          </button>
+          <ul id="locale-menu"
+              class="hidden absolute top-full left-0 mt-2 z-50 min-w-full py-2
+                     bg-glass-bg backdrop-blur-[24px] backdrop-saturate-150 rounded-2xl
+                     shadow-[0_12px_80px_rgba(0,0,0,0.16)] whitespace-nowrap"></ul>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Download ZIP -->
+      <div class="flex items-center">
+        <a id="welcome-download-zip" href="/export-welcome-animation"
+           class="inline-flex items-center h-[34px] px-3 rounded-full
+                  border border-ash text-midnight-forest text-sm font-semibold
+                  hover:border-midnight-forest hover:bg-mist
+                  transition-colors duration-150 cursor-pointer outline-none">
+          Download ZIP
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="flex flex-col items-center pt-10 pb-20 px-20">
+
+    <div class="bg-mist rounded-3xl py-10 px-12 flex items-center justify-center">
+
+      <div class="dn-mockup dn-mockup--framed" id="welcome-phone" style="width:393px">
+        <div class="dn-mockup__bezel">
+          <div class="dn-mockup__screen" id="welcome-screen">
+
+            <!-- ══════════════════════════════════════════════════════
+                 SCENE 1 · TRACKING
+            ══════════════════════════════════════════════════════ -->
+            <div class="dn-mockup__stage" id="scene-tracking">
+              <!-- Filled by applyTrackingScene() with rendered template HTML -->
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════
+                 SCENE 2 · INBOX (8 trips with simulated scroll)
+            ══════════════════════════════════════════════════════ -->
+            <div class="dn-mockup__stage" id="scene-inbox">
+
+              <div class="dn-mockup__status-bar" aria-hidden="true">
+                <span class="dn-mockup__status-time">9:15</span>
+                <div class="dn-mockup__dynamic-island"></div>
+                <div class="dn-mockup__status-icons">
+                  <svg class="dn-mockup__icon-cellular" aria-hidden="true" focusable="false"><use href="#dn-icon-cellular"/></svg>
+                  <svg class="dn-mockup__icon-wifi"     aria-hidden="true" focusable="false"><use href="#dn-icon-wifi"/></svg>
+                  <svg class="dn-mockup__icon-battery"  aria-hidden="true" focusable="false"><use href="#dn-icon-battery"/></svg>
+                </div>
+              </div>
+
+              <div class="dn-mockup__inbox-header-top">
+                <div class="dn-mockup__inbox-controls">
+                  <div class="dn-mockup__auto-track">
+                    <div class="dn-mockup__toggle" aria-hidden="true">
+                      <svg class="dn-mockup__toggle-check" aria-hidden="true" focusable="false"><use href="#dn-icon-check"/></svg>
+                    </div>
+                    <span class="dn-mockup__toggle-label" data-l="strings.auto_track">Auto-track</span>
+                  </div>
+                  <span class="dn-mockup__configure-btn" data-l="strings.configure">Configure</span>
+                </div>
+              </div>
+
+              <div class="dn-mockup__inbox-title-row">
+                <div class="dn-mockup__inbox-title-inner">
+                  <span class="dn-mockup__inbox-title" data-l="strings.inbox">Inbox</span>
+                  <span class="dn-mockup__inbox-count" id="anim-inbox-count">8</span>
+                  <span class="dn-mockup__review-all" data-l="strings.review_all">Review all</span>
+                </div>
+              </div>
+
+              <div id="scene-inbox-viewport">
+                <div id="scene-inbox-list"><!-- 8 cards injected here --></div>
+              </div>
+
+              <nav class="dn-mockup__nav-bar" aria-label="Main navigation">
+                <div class="dn-mockup__nav-tabs">
+                  <div class="dn-mockup__nav-tab" data-tab="inbox" data-active="true">
+                    <svg class="dn-mockup__nav-tab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-inbox-active"/></svg>
+                    <span class="dn-mockup__nav-tab-label" data-l="strings.inbox">Inbox</span>
+                  </div>
+                  <div class="dn-mockup__nav-tab" data-tab="all-trips">
+                    <svg class="dn-mockup__nav-tab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-trips"/></svg>
+                    <span class="dn-mockup__nav-tab-label" data-l="strings.all_trips">All trips</span>
+                  </div>
+                  <div class="dn-mockup__nav-fab-spacer" aria-hidden="true"></div>
+                  <div class="dn-mockup__nav-tab dn-mockup__nav-tab--reports" data-tab="reports">
+                    <svg class="dn-mockup__nav-tab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-reports"/></svg>
+                    <span class="dn-mockup__nav-tab-label" data-l="strings.reports">Reports</span>
+                  </div>
+                  <div class="dn-mockup__nav-tab dn-mockup__nav-tab--settings" data-tab="settings">
+                    <svg class="dn-mockup__nav-tab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-settings"/></svg>
+                    <span class="dn-mockup__nav-tab-label" data-l="strings.settings">Settings</span>
+                  </div>
+                </div>
+                <div class="dn-mockup__nav-fab" aria-hidden="true">
+                  <svg class="dn-mockup__nav-fab-icon" aria-hidden="true" focusable="false"><use href="#dn-icon-fab"/></svg>
+                </div>
+              </nav>
+
+              <div class="dn-mockup__home-indicator" aria-hidden="true">
+                <div class="dn-mockup__home-bar"></div>
+              </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════
+                 SCENE 3 · REPORT (filled by mountReportScene)
+            ══════════════════════════════════════════════════════ -->
+            <div class="dn-mockup__stage" id="scene-report"><!-- Filled by mountReportScene() --></div>
+
+            <!-- ══════════════════════════════════════════════════════
+                 SCENE 4 · SEND-REPORT MODAL OVERLAY
+                 The .dn-mockup__modal-overlay from the 4.2 Send Report
+                 mockup is mounted here at boot so the modal we show is
+                 the canonical one. Scene 3 (report) stays underneath
+                 as the visible backdrop.
+            ══════════════════════════════════════════════════════ -->
+            <div id="scene-modal"><!-- Filled by mountSendModal() --></div>
+
+          </div><!-- /.dn-mockup__screen -->
+        </div><!-- /.dn-mockup__bezel -->
+      </div><!-- /.dn-mockup -->
+    </div><!-- /.bg-mist -->
+
+    <!-- Playback controls (mandatory for every animation page; see CLAUDE.md) -->
+    <div class="flex items-center gap-3 mt-9">
+      <button id="ctrl-playpause" class="ctrl-btn">
+        <svg id="ctrl-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+          <rect x="1.5" y="1.5" width="3.5" height="9" rx="1"/>
+          <rect x="7"   y="1.5" width="3.5" height="9" rx="1"/>
+        </svg>
+        <span id="ctrl-label">Pause</span>
+      </button>
+      <button id="ctrl-restart" class="ctrl-btn">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 6a4 4 0 1 0 .7-2.3"/>
+          <polyline points="0.5,2 2.5,3.8 2.5,1.5"/>
+        </svg>
+        Restart
+      </button>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="anim-progress-track" id="anim-progress-track">
+      <div class="anim-progress-fill" id="anim-progress-fill"></div>
+    </div>
+
+    <!-- Scene markers -->
+    <div class="anim-scene-labels">
+      <span>Tracking</span>
+      <span>Inbox</span>
+      <span>Report</span>
+      <span>Send</span>
+    </div>
+
+  </main>
+
+  <!-- DN_LOCALES + rendered screen HTML -->
+  <script src="mockup-locales.js"></script>
+
+  <!-- Single source of truth for FRAME_PRESETS / SHADOW_PRESETS -->
+  <script src="frame-presets.js"></script>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // ── Locale resolution ──────────────────────────────────────────
+      function resolveLocale() {
+        if (window.__DN_LOCALE__ && DN_LOCALES[window.__DN_LOCALE__]) return window.__DN_LOCALE__;
+        var qp = new URLSearchParams(window.location.search).get('locale');
+        if (qp && DN_LOCALES[qp]) return qp;
+        return 'en-US';
+      }
+
+      var currentLocale = resolveLocale();
+
+      // Per-locale defaults for the Send Report modal typewriter
+      // fields. Used when the locale JSON does not provide
+      // sample.send_report_name / send_report_recipient / send_report_note.
+      var SEND_REPORT_DEFAULTS = {
+        'en-US': { name: 'Alex Morgan',      recipient: 'accounting@company.com',       note: "I've cleaned up the report" },
+        'en-GB': { name: 'James Carter',     recipient: 'accounts@company.co.uk',       note: "I've cleaned up the report" },
+        'en-AU': { name: 'Lachlan Mitchell', recipient: 'accounts@company.com.au',      note: "I've cleaned up the report" },
+        'en-CA': { name: 'Jordan Whitfield', recipient: 'accounting@company.ca',        note: "I've cleaned up the report" },
+        'da-DK': { name: 'Mette Larsen',     recipient: 'regnskab@firma.dk',            note: 'Jeg har ryddet op i rapporten' },
+        'de-DE': { name: 'Lukas Müller',     recipient: 'buchhaltung@firma.de',         note: 'Ich habe den Bericht aktualisiert' },
+        'fr-FR': { name: 'Camille Dubois',   recipient: 'comptabilite@entreprise.fr',   note: "J'ai mis à jour le rapport" },
+        'nl-NL': { name: 'Sanne van Dijk',   recipient: 'boekhouding@bedrijf.nl',       note: 'Ik heb het rapport bijgewerkt' },
+        'sv-SE': { name: 'Erik Lindberg',    recipient: 'ekonomi@foretag.se',           note: 'Jag har uppdaterat rapporten' },
+      };
+
+      // ── Timer registry ────────────────────────────────────────────
+      var timers = [];
+      function schedule(fn, delay) {
+        var id = setTimeout(fn, delay);
+        timers.push(id);
+        return id;
+      }
+      function clearTimers() {
+        timers.forEach(function (id) { clearTimeout(id); });
+        timers = [];
+      }
+
+      // ── Apply locale text via [data-l] ────────────────────────────
+      function getByPath(obj, path) {
+        return path.split('.').reduce(function (acc, k) {
+          return acc != null ? acc[k] : undefined;
+        }, obj);
+      }
+      function applyLocale(root) {
+        var locale = DN_LOCALES[currentLocale];
+        if (!locale) return;
+        var data = locale.data;
+        root.querySelectorAll('[data-l]').forEach(function (el) {
+          var key = el.getAttribute('data-l');
+          var val = getByPath(data, key);
+          if (val !== undefined && val !== null) el.textContent = val;
+        });
+      }
+
+      // Rewrite rendered screen HTML so asset paths resolve from
+      // app/animations/ instead of dist/. The rendered templates use
+      // `../assets/...` which is correct for dist/ but wrong for us.
+      function fixAssetPaths(html) {
+        return html.replace(/(src|href)="(?:\.\.\/)+assets\//g, '$1="/screenkit-anim/assets/');
+      }
+
+      // ── Scene mounting ────────────────────────────────────────────
+      function mountTrackingScene() {
+        var stage = document.getElementById('scene-tracking');
+        var locale = DN_LOCALES[currentLocale];
+        if (!locale || !locale.screens || !locale.screens.tracking) {
+          stage.innerHTML = '<div class="p-8 text-sm text-graphite">No tracking screen for ' + currentLocale + '</div>';
+          return;
+        }
+        // The rendered tracking screen already contains the .dn-mockup__stage
+        // wrapper. Strip the outer wrapper since we already have one.
+        var html = fixAssetPaths(locale.screens.tracking);
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        var inner = tmp.querySelector('.dn-mockup__stage');
+        stage.innerHTML = inner ? inner.innerHTML : html;
+
+        // Pulse pin + ellipsis dots now live in the canonical
+        // tracking template, driven by phone-mockup.css. No manual
+        // injection needed here.
+      }
+
+      // Inbox card counts. The badge stays at INBOX_DISPLAY_COUNT so the
+      // top bar still reads "8 trips to review". The list never scrolls
+      // (translateY stays at 0), so only the cards in the visible viewport
+      // get mounted — anything past INBOX_MOUNT_COUNT would sit below the
+      // fold, render nothing, and only waste a map PNG in the export bundle.
+      var INBOX_DISPLAY_COUNT = 8;
+      var INBOX_MOUNT_COUNT   = 5;
+
+      function mountInboxCards() {
+        var list = document.getElementById('scene-inbox-list');
+        list.innerHTML = '';
+        var locale = DN_LOCALES[currentLocale];
+        var trips = (locale && locale.data && locale.data.sample && locale.data.sample.trips) || [];
+        var pool = trips.slice(0, INBOX_DISPLAY_COUNT);
+        // Pad pool if fewer than INBOX_DISPLAY_COUNT trips by repeating from index 0.
+        while (pool.length < INBOX_DISPLAY_COUNT) pool.push(trips[pool.length % trips.length]);
+
+        // Move the recategorise trip to position 1 so both reviewed cards
+        // are visible at the top of the list. Without this the recat trip
+        // can sit below the visible viewport: its CSS fade still runs but
+        // the user sees no card disappear, only the counter tick.
+        var recatPoolIdx = pool.findIndex(function (t) { return t && t.recategorise === true; });
+        if (recatPoolIdx > 1) {
+          var recatTrip = pool.splice(recatPoolIdx, 1)[0];
+          pool.splice(1, 0, recatTrip);
+        }
+
+        // Drop trips below the fold. The badge still reflects the full pool
+        // via INBOX_DISPLAY_COUNT (set on the counter at scene init / reset).
+        pool = pool.slice(0, INBOX_MOUNT_COUNT);
+
+        var template = fixAssetPaths(locale.screens.inbox);
+        var tmp = document.createElement('div');
+        tmp.innerHTML = template;
+        var sampleCard = tmp.querySelector('.dn-mockup__trip-card-large');
+        if (!sampleCard) return;
+
+        // Locale meta drives unit conversion and rate calculation so
+        // each card shows its own distance and amount, not the template's
+        // build-time anchor values.
+        var meta = (locale && locale.data && locale.data.meta) || {};
+        var unit = meta.distanceUnit || 'km';
+        var currency = meta.currencySymbol || '$';
+        var ratePerUnit = parseFloat(meta.mileage_rate_value) || 0;
+        var metersPerUnit = unit === 'mi' ? 1609.344 : 1000;
+
+        function formatDistance(meters) {
+          var v = meters / metersPerUnit;
+          return v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace(/\.0$/, '');
+        }
+        function formatAmount(meters, category) {
+          if (category !== 'business') return '0.00';
+          var dist = meters / metersPerUnit;
+          var amt = dist * ratePerUnit;
+          return amt.toFixed(2);
+        }
+
+        pool.forEach(function (trip, idx) {
+          var card = sampleCard.cloneNode(true);
+          card.style.setProperty('--card-index', String(idx));
+          card.setAttribute('data-trip-index', String(idx));
+          card.setAttribute('data-trip-id', trip.id || '');
+          if (trip.recategorise) card.setAttribute('data-recategorise', 'true');
+
+          // Update map image
+          var img = card.querySelector('.dn-mockup__map-image');
+          if (img && trip.images && trip.images.inbox) {
+            img.src = trip.images.inbox.replace(/^(?:\.\.\/)+assets\//, '/screenkit-anim/assets/');
+          }
+
+          // Update location names/addresses
+          var names = card.querySelectorAll('.dn-mockup__location-name');
+          var addrs = card.querySelectorAll('.dn-mockup__location-address');
+          if (names[0] && trip.from) names[0].textContent = trip.from.name || '';
+          if (names[1] && trip.to)   names[1].textContent = trip.to.name   || '';
+          if (addrs[0] && trip.from) addrs[0].textContent = trip.from.address || '';
+          if (addrs[1] && trip.to)   addrs[1].textContent = trip.to.address   || '';
+
+          // Override distance + amount per-trip. The template's two
+          // .dn-mockup__map-meta-number elements are [distance, amount].
+          if (typeof trip.distance_meters === 'number') {
+            var metaRows = card.querySelectorAll('.dn-mockup__map-meta-row');
+            if (metaRows[0]) {
+              var distNum  = metaRows[0].querySelector('.dn-mockup__map-meta-number');
+              var distUnit = metaRows[0].querySelector('.dn-mockup__map-meta-unit');
+              if (distNum)  distNum.textContent  = formatDistance(trip.distance_meters);
+              if (distUnit) distUnit.textContent = unit;
+            }
+            if (metaRows[1]) {
+              var amtCur = metaRows[1].querySelector('.dn-mockup__map-meta-currency');
+              var amtNum = metaRows[1].querySelector('.dn-mockup__map-meta-number');
+              if (amtCur) amtCur.textContent = currency;
+              if (amtNum) amtNum.textContent = formatAmount(trip.distance_meters, trip.category);
+            }
+          }
+
+          // Stash per-card data so the timeline can recompute the
+          // amount when the recategorise gesture flips category.
+          card.__animMeters  = trip.distance_meters;
+          card.__animFormat  = formatAmount;
+
+          // Set initial active category from trip data
+          var categoryOptions = card.querySelectorAll('.dn-mockup__category-option');
+          categoryOptions.forEach(function (opt) {
+            opt.setAttribute('data-active', 'false');
+          });
+          var activeIdx = trip.category === 'business' ? 1 : 0;
+          if (categoryOptions[activeIdx]) categoryOptions[activeIdx].setAttribute('data-active', 'true');
+
+          list.appendChild(card);
+        });
+      }
+
+      // Mount the canonical 4.2 modal from the send-report rendered screen
+      // into #scene-modal. Tag the three input/textarea fields with stable
+      // IDs so the timeline can target them by id rather than nth-of-type.
+      function mountSendModal() {
+        var scene = document.getElementById('scene-modal');
+        scene.innerHTML = '';
+        var locale = DN_LOCALES[currentLocale];
+        if (!locale || !locale.screens || !locale.screens['send-report']) return;
+        var html = fixAssetPaths(locale.screens['send-report']);
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        var overlay = tmp.querySelector('.dn-mockup__modal-overlay');
+        if (!overlay) return;
+        scene.appendChild(overlay);
+
+        // Convert the canonical Note textarea into a single-line input
+        // so all three fields share the same shape on this animation.
+        var textarea = overlay.querySelector('.dn-mockup__modal-textarea');
+        if (textarea) {
+          textarea.classList.remove('dn-mockup__modal-textarea');
+          textarea.classList.add('dn-mockup__modal-input');
+          textarea.innerHTML = '';
+        }
+
+        // The mockup renders Name, Email, Note in that order. Tag them.
+        var inputs = overlay.querySelectorAll('.dn-mockup__modal-input');
+        if (inputs[0]) inputs[0].id = 'anim-modal-name';
+        if (inputs[1]) inputs[1].id = 'anim-modal-email';
+        if (inputs[2]) inputs[2].id = 'anim-modal-note';
+
+        // Inject a typewriter target into each field.
+        [inputs[0], inputs[1], inputs[2]].forEach(function (f) {
+          if (!f) return;
+          var wrap = document.createElement('span');
+          wrap.className = 'anim-typed-wrap';
+          wrap.innerHTML = '<span class="anim-typed"></span><span class="anim-cursor">|</span>';
+          f.appendChild(wrap);
+        });
+      }
+
+      function mountReportScene() {
+        var stage = document.getElementById('scene-report');
+        var locale = DN_LOCALES[currentLocale];
+        if (!locale || !locale.screens || !locale.screens.report) {
+          stage.innerHTML = '<div class="p-8 text-sm text-graphite">No report screen for ' + currentLocale + '</div>';
+          return;
+        }
+        var html = fixAssetPaths(locale.screens.report);
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        var inner = tmp.querySelector('.dn-mockup__stage');
+        stage.innerHTML = inner ? inner.innerHTML : html;
+
+        // Expand the canonical 3-trip report list into 8 trips so the
+        // report mirrors the inbox set the viewer just reviewed. We
+        // clone the first .dn-mockup__report-trip block as a template,
+        // remove the other two, then append one block per trip.
+        var scroll = stage.querySelector('.dn-mockup__report-scroll');
+        var existingTrips = scroll ? scroll.querySelectorAll('.dn-mockup__report-trip') : [];
+        if (!scroll || !existingTrips.length) return;
+
+        var trips = (locale.data && locale.data.sample && locale.data.sample.trips) || [];
+        var pool = trips.slice(0, 8);
+        while (pool.length < 8) pool.push(trips[pool.length % Math.max(trips.length, 1)]);
+        if (!pool.length) return;
+
+        var meta = locale.data.meta || {};
+        var unit = meta.distanceUnit || 'km';
+        var currency = meta.currencySymbol || '$';
+        var ratePerUnit = parseFloat(meta.mileage_rate_value) || 0;
+        var metersPerUnit = unit === 'mi' ? 1609.344 : 1000;
+        var strings = locale.data.strings || {};
+        var dateLabel = (locale.data.sample && locale.data.sample.start_date) || '';
+
+        function fmtDistance(meters) {
+          var v = meters / metersPerUnit;
+          var num = v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace(/\.0$/, '');
+          return num + ' ' + unit;
+        }
+        function fmtAmount(meters, category) {
+          var amt = category === 'business' ? (meters / metersPerUnit) * ratePerUnit : 0;
+          return currency + amt.toFixed(2);
+        }
+
+        var template = existingTrips[0].cloneNode(true);
+        // Remove the canonical placeholder blocks.
+        existingTrips.forEach(function (el) { el.parentNode.removeChild(el); });
+
+        // Compute totals over the business trips only. Personal trips
+        // contribute neither distance nor amount to the reimbursable
+        // summary, mirroring how the real app aggregates a report.
+        var totalMeters = 0;
+        var totalAmount = 0;
+        pool.forEach(function (trip) {
+          if (trip.category !== 'business') return;
+          var m = trip.distance_meters || 0;
+          totalMeters += m;
+          totalAmount += (m / metersPerUnit) * ratePerUnit;
+        });
+        var totalDistanceText = fmtDistance(totalMeters);
+        var totalAmountText   = currency + totalAmount.toFixed(2);
+
+        var dataRows = scroll.parentNode.querySelectorAll('.dn-mockup__report-table-row--data');
+        dataRows.forEach(function (row) {
+          var distCol = row.querySelector('.dn-mockup__report-table-col--center');
+          var amtCol  = row.querySelector('.dn-mockup__report-table-col--right');
+          if (distCol) distCol.textContent = totalDistanceText;
+          if (amtCol)  amtCol.textContent  = totalAmountText;
+        });
+
+        pool.forEach(function (trip) {
+          var node = template.cloneNode(true);
+          var date = node.querySelector('.dn-mockup__report-trip-date');
+          var addrs = node.querySelectorAll('.dn-mockup__report-trip-address');
+          var cat   = node.querySelector('.dn-mockup__report-trip-category');
+          var dist  = node.querySelector('.dn-mockup__report-trip-distance');
+          var amt   = node.querySelector('.dn-mockup__report-trip-amount');
+          if (date) date.textContent = dateLabel;
+          function nameAddr(p) {
+            if (!p) return '';
+            var name = p.name || '';
+            var addr = p.address || '';
+            return name && addr ? (name + ', ' + addr) : (name || addr);
+          }
+          if (addrs[0]) addrs[0].textContent = nameAddr(trip.from);
+          if (addrs[1]) addrs[1].textContent = nameAddr(trip.to);
+          if (cat) cat.textContent = trip.category === 'business' ? (strings.business || 'Business') : (strings.personal || 'Personal');
+          if (dist) dist.textContent = fmtDistance(trip.distance_meters || 0);
+          if (amt)  amt.textContent  = fmtAmount(trip.distance_meters || 0, trip.category);
+          scroll.appendChild(node);
+        });
+      }
+
+      // Inject the shared SVG sprite once so <use href="#dn-icon-*"> refs work.
+      function injectSprite() {
+        if (document.getElementById('dn-icon-cellular')) return;
+        if (typeof DN_SPRITE_HTML === 'undefined') return;
+        var holder = document.createElement('div');
+        holder.style.display = 'none';
+        holder.innerHTML = DN_SPRITE_HTML;
+        document.body.insertBefore(holder, document.body.firstChild);
+      }
+
+      // ── Scene visibility helpers ──────────────────────────────────
+      function showScene(id) {
+        ['scene-tracking', 'scene-inbox', 'scene-report'].forEach(function (sid) {
+          var el = document.getElementById(sid);
+          if (sid === id) el.classList.add('is-visible');
+          else el.classList.remove('is-visible');
+        });
+      }
+
+      // ── Loop reset ────────────────────────────────────────────────
+      function resetAll() {
+        clearTimers();
+
+        // Reset scene visibility
+        ['scene-tracking', 'scene-inbox', 'scene-report'].forEach(function (id) {
+          document.getElementById(id).classList.remove('is-visible');
+        });
+
+        // Reset inbox state: clear reviewed flags, recategorise marker,
+        // pulse animation residue, counter, amount on the recat card.
+        var list = document.getElementById('scene-inbox-list');
+        list.style.transition = '';
+        list.style.transform = 'translateY(0)';
+        list.querySelectorAll('.is-reviewed').forEach(function (el) { el.classList.remove('is-reviewed'); });
+        list.querySelectorAll('.anim-recategorising').forEach(function (el) { el.classList.remove('anim-recategorising'); });
+        list.querySelectorAll('.anim-pulse').forEach(function (el) { el.classList.remove('anim-pulse'); });
+        list.querySelectorAll('.anim-out').forEach(function (el) { el.classList.remove('anim-out'); });
+
+        var counterEl = document.getElementById('anim-inbox-count');
+        if (counterEl) {
+          counterEl.classList.remove('anim-tick');
+          counterEl.textContent = String(INBOX_DISPLAY_COUNT);
+        }
+
+        // Restore initial active category + amount on each card
+        list.querySelectorAll('.dn-mockup__trip-card-large').forEach(function (card) {
+          var idx = parseInt(card.getAttribute('data-trip-index'), 10);
+          var locale = DN_LOCALES[currentLocale];
+          var trip = locale && locale.data.sample.trips[idx];
+          if (!trip) return;
+          var opts = card.querySelectorAll('.dn-mockup__category-option');
+          opts.forEach(function (opt) { opt.setAttribute('data-active', 'false'); });
+          var activeIdx = trip.category === 'business' ? 1 : 0;
+          if (opts[activeIdx]) opts[activeIdx].setAttribute('data-active', 'true');
+          // Restore amount to its category-driven baseline (personal = 0).
+          if (typeof card.__animFormat === 'function') {
+            var row = card.querySelectorAll('.dn-mockup__map-meta-row')[1];
+            var amtNum = row && row.querySelector('.dn-mockup__map-meta-number');
+            if (amtNum) amtNum.textContent = card.__animFormat(card.__animMeters, trip.category);
+          }
+        });
+
+        // Reset report scroll + send-icon tap
+        var rs = document.querySelector('#scene-report .dn-mockup__report-scroll');
+        if (rs) rs.style.transform = 'translateY(0)';
+        var sendIcon = document.getElementById('anim-send-icon');
+        if (sendIcon) sendIcon.classList.remove('is-tapped');
+
+        // Reset modal
+        var modal = document.getElementById('scene-modal');
+        modal.classList.remove('is-modal-visible', 'is-modal-exiting');
+        ['anim-modal-name', 'anim-modal-email', 'anim-modal-note'].forEach(function (id) {
+          var f = document.getElementById(id);
+          if (!f) return;
+          f.classList.remove('anim-field-active', 'anim-field-filled');
+          var typed = f.querySelector('.anim-typed');
+          if (typed) typed.textContent = '';
+        });
+        var sendBtn = modal.querySelector('.dn-mockup__modal-btn-send');
+        if (sendBtn) sendBtn.classList.remove('is-pressed');
+      }
+
+      // ── Typewriter ────────────────────────────────────────────────
+      // Types `text` into the `anim-typed` span inside `fieldEl`. The
+      // field is one of the .dn-mockup__modal-input / .dn-mockup__modal-textarea
+      // elements mounted by mountSendModal().
+      function typewriter(fieldEl, text, msPerChar, done) {
+        if (!fieldEl) { if (done) done(); return; }
+        fieldEl.classList.add('anim-field-active');
+        var typed = fieldEl.querySelector('.anim-typed');
+        if (!typed) { if (done) done(); return; }
+        typed.textContent = '';
+        var i = 0;
+        function step() {
+          if (i >= text.length) {
+            fieldEl.classList.remove('anim-field-active');
+            fieldEl.classList.add('anim-field-filled');
+            if (done) done();
+            return;
+          }
+          typed.textContent += text.charAt(i);
+          i++;
+          schedule(step, msPerChar);
+        }
+        step();
+      }
+
+      // ── Timeline ──────────────────────────────────────────────────
+      // Mirrors the website-hero pattern: a [offsetMs, callback] array
+      // consumed by play(offset). Pause clears all timers, captures
+      // elapsed; resume re-schedules everything past the pausedAt mark.
+      // Restart clears state and replays from 0.
+      var TOTAL_MS = 22000;
+      var TIMELINE = [];
+
+      function buildTimeline() {
+        TIMELINE = [];
+        var list = document.getElementById('scene-inbox-list');
+        var cards = list.querySelectorAll('.dn-mockup__trip-card-large');
+        var recategoriseIdx = -1;
+        cards.forEach(function (c, i) { if (c.getAttribute('data-recategorise') === 'true') recategoriseIdx = i; });
+
+        TIMELINE.push([0,    function () { showScene('scene-tracking'); }]);
+        TIMELINE.push([4000, function () { showScene('scene-inbox'); }]);
+
+        // List stays at translateY(0). Cards rise into the freed
+        // space via flex gap collapse as each one gets .is-reviewed.
+        list.style.transition = '';
+        list.style.transform  = 'translateY(0)';
+
+        // ── Review sequence ───────────────────────────────────────
+        // We mark four trips reviewed: trips 0, 1, 2 (straight taps)
+        // and the recategorise trip (recat first, then mark). Each
+        // step pulses the CTA, fades + collapses the card via the
+        // existing .is-reviewed CSS, and ticks the inbox counter.
+        // Pacing dwells so the viewer can read each card and absorb
+        // the recategorise amount change, without the loop dragging.
+        var counterEl = document.getElementById('anim-inbox-count');
+        // `totalCount` bounds the cards array (mounted DOM elements).
+        // `displayCount` seeds the badge so the inbox reads "8 trips to
+        // review" even though only INBOX_MOUNT_COUNT cards are rendered.
+        // Each review decrements `displayCount` by 1; the badge ends at
+        // ~6 before the scene transitions to the report, which is fine —
+        // the loop never claims inbox-zero state.
+        var totalCount = cards.length;
+
+        function pulseReviewBtn(card) {
+          var btn = card.querySelector('.dn-mockup__btn-review');
+          if (!btn) return;
+          btn.classList.remove('anim-pulse', 'anim-tap');
+          // Force reflow so re-adding the class restarts the animation.
+          void btn.offsetWidth;
+          btn.classList.add('anim-pulse', 'anim-tap');
+        }
+        function fadeCard(card) { card.classList.add('is-reviewed'); }
+        function tickCounter(next) {
+          if (!counterEl) return;
+          counterEl.textContent = String(next);
+          counterEl.classList.remove('anim-tick');
+          void counterEl.offsetWidth;
+          counterEl.classList.add('anim-tick');
+        }
+        function updateAmount(card, category) {
+          if (!card || typeof card.__animFormat !== 'function') return;
+          var row = card.querySelectorAll('.dn-mockup__map-meta-row')[1];
+          var amtNum = row && row.querySelector('.dn-mockup__map-meta-number');
+          if (amtNum) amtNum.textContent = card.__animFormat(card.__animMeters, category);
+        }
+        function recategoriseToBusiness(card) {
+          card.classList.add('anim-recategorising');
+          var opts = card.querySelectorAll('.dn-mockup__category-option');
+          opts.forEach(function (opt) { opt.setAttribute('data-active', 'false'); });
+          var businessChip = opts[1];
+          if (businessChip) {
+            businessChip.setAttribute('data-active', 'true');
+            businessChip.classList.remove('anim-pulse');
+            void businessChip.offsetWidth;
+            businessChip.classList.add('anim-pulse');
+          }
+        }
+
+        // First review starts after the cards finish staggering in
+        // (INBOX_MOUNT_COUNT cards x 60ms + 200ms mount keyframe + breathing room).
+        var t = 5100;
+        var remaining = INBOX_DISPLAY_COUNT;
+
+        function scheduleReview(idx, isRecat) {
+          var dwellRead    = 650;   // read the card before tapping
+          var pulseDur     = 260;   // CTA pulse animation length
+          var fadeDur      = 950;   // 550ms opacity fade + 400ms delayed 550ms collapse
+          var interTrip    = 220;   // breathing room between trips
+
+          if (isRecat) {
+            // Recat sequence: read → tap business chip → read amount → tap CTA → fade
+            var recatStart   = t;
+            var chipPulseDur = 380;
+            var readAmtMs    = 700;
+            TIMELINE.push([recatStart, function () {
+              recategoriseToBusiness(cards[idx]);
+            }]);
+            TIMELINE.push([recatStart + 220, function () {
+              updateAmount(cards[idx], 'business');
+            }]);
+            t = recatStart + chipPulseDur + readAmtMs;
+          } else {
+            t += dwellRead;
+          }
+
+          var pulseT = t;
+          var fadeT  = pulseT + pulseDur - 40;  // overlap pulse end with card fade
+          var tickT  = fadeT + 40;              // counter ticks as card starts collapsing
+          TIMELINE.push([pulseT, function () { pulseReviewBtn(cards[idx]); }]);
+          TIMELINE.push([fadeT,  function () { fadeCard(cards[idx]); }]);
+          var nextRemaining = --remaining;
+          TIMELINE.push([tickT,  function () { tickCounter(nextRemaining); }]);
+          t = fadeT + fadeDur + interTrip;
+        }
+
+        // Two reviews: one straight + one recategorise, picking distinct
+        // cards so consecutive routes are never the same. Falls back to
+        // two straight reviews if no recategorise trip is configured.
+        var straightIdx = 0;
+        while (straightIdx < totalCount && cards[straightIdx].getAttribute('data-recategorise') === 'true') straightIdx++;
+        if (straightIdx < totalCount) scheduleReview(straightIdx, false);
+        if (recategoriseIdx >= 0 && recategoriseIdx !== straightIdx) {
+          scheduleReview(recategoriseIdx, true);
+        } else if (straightIdx + 1 < totalCount) {
+          scheduleReview(straightIdx + 1, false);
+        }
+
+        TIMELINE.push([11000, function () { showScene('scene-report'); }]);
+        TIMELINE.push([12000, function () {
+          var rs = document.querySelector('#scene-report .dn-mockup__report-scroll');
+          if (rs) rs.style.transform = 'translateY(-180px)';
+        }]);
+        TIMELINE.push([14000, function () {
+          var sendIcon = document.getElementById('anim-send-icon');
+          if (sendIcon) sendIcon.classList.add('is-tapped');
+        }]);
+        TIMELINE.push([14500, function () {
+          document.getElementById('scene-modal').classList.add('is-modal-visible');
+        }]);
+        TIMELINE.push([15000, function () {
+          var locale = DN_LOCALES[currentLocale];
+          var s = (locale && locale.data && locale.data.sample) || {};
+          var defaults = SEND_REPORT_DEFAULTS[currentLocale] || SEND_REPORT_DEFAULTS['en-US'];
+          var name  = s.send_report_name      || defaults.name;
+          var email = s.send_report_recipient || defaults.recipient;
+          var note  = s.send_report_note      || defaults.note;
+          typewriter(document.getElementById('anim-modal-name'), name, 60, function () {
+            schedule(function () {
+              typewriter(document.getElementById('anim-modal-email'), email, 55, function () {
+                schedule(function () {
+                  typewriter(document.getElementById('anim-modal-note'), note, 50);
+                }, 250);
+              });
+            }, 250);
+          });
+        }]);
+        TIMELINE.push([20000, function () {
+          var sendBtn = document.querySelector('#scene-modal .dn-mockup__modal-btn-send');
+          if (sendBtn) sendBtn.classList.add('is-pressed');
+        }]);
+        TIMELINE.push([20300, function () {
+          document.getElementById('scene-modal').classList.add('is-modal-exiting');
+        }]);
+        TIMELINE.push([21000, function () { showScene('scene-tracking'); }]);
+      }
+
+      // ── Playback state ───────────────────────────────────────────
+      var rafId     = null;
+      var isPlaying = true;
+      var startTime = 0;
+      var pausedAt  = 0;
+
+      var progressFill = document.getElementById('anim-progress-fill');
+      var progressTrack = document.getElementById('anim-progress-track');
+      var playpauseBtn = document.getElementById('ctrl-playpause');
+      var ctrlIcon    = document.getElementById('ctrl-icon');
+      var ctrlLabel   = document.getElementById('ctrl-label');
+
+      function scheduleFrom(offsetMs) {
+        TIMELINE.forEach(function (entry) {
+          var delay = entry[0] - offsetMs;
+          if (delay >= 0) schedule(entry[1], delay);
+        });
+        // Loop back at the end
+        schedule(function () {
+          resetAll();
+          scheduleFrom(0);
+          startTime = Date.now();
+        }, TOTAL_MS - offsetMs);
+      }
+
+      function tickProgress() {
+        if (!isPlaying) return;
+        var elapsed = (Date.now() - startTime) % TOTAL_MS;
+        progressFill.style.width = (elapsed / TOTAL_MS * 100).toFixed(2) + '%';
+        rafId = requestAnimationFrame(tickProgress);
+      }
+
+      function play(offsetMs) {
+        offsetMs = offsetMs || 0;
+        startTime = Date.now() - offsetMs;
+        scheduleFrom(offsetMs);
+        isPlaying = true;
+        setPlayIcon(false);
+        tickProgress();
+      }
+
+      function pause() {
+        pausedAt = (Date.now() - startTime) % TOTAL_MS;
+        clearTimers();
+        cancelAnimationFrame(rafId);
+        isPlaying = false;
+        setPlayIcon(true);
+      }
+
+      function restart() {
+        clearTimers();
+        cancelAnimationFrame(rafId);
+        resetAll();
+        pausedAt = 0;
+        play(0);
+      }
+
+      function setPlayIcon(showPlay) {
+        if (showPlay) {
+          ctrlIcon.innerHTML = '<polygon points="2,1.5 10.5,6 2,10.5"/>';
+          ctrlLabel.textContent = 'Play';
+        } else {
+          ctrlIcon.innerHTML = '<rect x="1.5" y="1.5" width="3.5" height="9" rx="1"/><rect x="7" y="1.5" width="3.5" height="9" rx="1"/>';
+          ctrlLabel.textContent = 'Pause';
+        }
+      }
+
+      playpauseBtn.addEventListener('click', function () {
+        if (isPlaying) pause();
+        else play(pausedAt);
+      });
+      document.getElementById('ctrl-restart').addEventListener('click', restart);
+      progressTrack.addEventListener('click', function (e) {
+        var rect = progressTrack.getBoundingClientRect();
+        var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        clearTimers();
+        cancelAnimationFrame(rafId);
+        resetAll();
+        play(pct * TOTAL_MS);
+      });
+
+      // ── Boot ──────────────────────────────────────────────────────
+      function boot() {
+        injectSprite();
+        mountTrackingScene();
+        mountInboxCards();
+        mountReportScene();
+        mountSendModal();
+
+        // Tag the send icon in the rendered report so the timeline can find it.
+        // Report-actions contains the send/download/filter SVG icons in order;
+        // the first child is the send (paper-plane) icon.
+        var actions = document.querySelector('#scene-report .dn-mockup__report-actions');
+        if (actions && actions.firstElementChild) {
+          actions.firstElementChild.id = 'anim-send-icon';
+        }
+
+        applyLocale(document.body);
+
+        // Reduced motion: skip the loop, hold Scene 1 as static poster.
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          showScene('scene-tracking');
+          setPlayIcon(true);
+          isPlaying = false;
+          return;
+        }
+
+        buildTimeline();
+        play(0);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+      } else {
+        boot();
+      }
+
+      // ── Frame / Shadow / Locale dropdowns ────────────────────────────
+      // FRAME_PRESETS and SHADOW_PRESETS live in src/frame-presets.js.
+      // Read the canonical objects; do not redeclare them here.
+      var FRAME_PRESETS  = window.DN_FRAME_PRESETS;
+      var SHADOW_PRESETS = window.DN_SHADOW_PRESETS;
+      var applyVars      = window.dnApplyFrameVars;
+
+      // Default: glass + gentle (matches the brief's "Glass device with gentle shadow")
+      applyVars(FRAME_PRESETS['glass']);
+      applyVars(SHADOW_PRESETS['gentle']);
+
+      var openDropdowns = [];
+      function closeAllDropdowns(except) {
+        openDropdowns.forEach(function (d) { if (d !== except) d.close(); });
+      }
+      function buildDropdown(opts) {
+        var rootEl  = document.getElementById(opts.rootId);
+        var trigger = document.getElementById(opts.triggerId);
+        var current = document.getElementById(opts.currentId);
+        var menu    = document.getElementById(opts.menuId);
+        var value   = opts.initial;
+        var alwaysActive = opts.alwaysActive === true;
+        var defaultValue = opts.defaultValue;
+        function renderMenu() {
+          menu.innerHTML = '';
+          opts.items.forEach(function (item) {
+            var li = document.createElement('li');
+            li.dataset.value = item.value;
+            li.className = 'px-4 py-2 text-base font-medium text-white cursor-pointer hover:bg-glass-item-hover whitespace-nowrap';
+            li.textContent = item.label;
+            if (item.value === value) li.classList.add('bg-glass-item-hover');
+            menu.appendChild(li);
+          });
+          current.textContent = (opts.items.find(function (i) { return i.value === value; }) || {}).label || '';
+          var active = alwaysActive || value !== defaultValue;
+          trigger.classList.toggle('is-active', active);
+        }
+        function open()  { menu.classList.remove('hidden'); }
+        function close() { menu.classList.add('hidden');    }
+        trigger.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var willOpen = menu.classList.contains('hidden');
+          closeAllDropdowns();
+          if (willOpen) open();
+        });
+        menu.addEventListener('click', function (e) {
+          var li = e.target.closest('[data-value]');
+          if (!li) return;
+          value = li.dataset.value;
+          renderMenu();
+          close();
+          opts.onChange(value);
+        });
+        var api = { close: close, contains: function (n) { return rootEl.contains(n); } };
+        openDropdowns.push(api);
+        renderMenu();
+        return api;
+      }
+      document.addEventListener('click', function (e) {
+        openDropdowns.forEach(function (d) { if (!d.contains(e.target)) d.close(); });
+      });
+
+      buildDropdown({
+        rootId: 'frame-dropdown', triggerId: 'frame-trigger', currentId: 'frame-current',
+        menuId: 'frame-menu', chevronId: 'frame-chevron',
+        initial: 'glass', defaultValue: 'naked',
+        items: [
+          { value: 'naked',       label: 'Device'      },
+          { value: 'glass',       label: 'Glass'       },
+          { value: 'white',       label: 'White'       },
+          { value: 'space-black', label: 'Space Black' },
+          { value: 'starlight',   label: 'Starlight'   },
+        ],
+        onChange: function (v) { applyVars(FRAME_PRESETS[v]); },
+      });
+
+      buildDropdown({
+        rootId: 'shadow-dropdown', triggerId: 'shadow-trigger', currentId: 'shadow-current',
+        menuId: 'shadow-menu', chevronId: 'shadow-chevron',
+        initial: 'gentle', defaultValue: 'none',
+        items: [
+          { value: 'none',   label: 'Shadow' },
+          { value: 'faint',  label: 'Faint'  },
+          { value: 'bare',   label: 'Bare'   },
+          { value: 'gentle', label: 'Gentle' },
+          { value: 'float',  label: 'Float'  },
+        ],
+        onChange: function (v) { applyVars(SHADOW_PRESETS[v]); },
+      });
+
+      buildDropdown({
+        rootId: 'locale-dropdown', triggerId: 'locale-trigger', currentId: 'locale-current',
+        menuId: 'locale-menu', chevronId: 'locale-chevron',
+        initial: currentLocale, alwaysActive: true,
+        items: Object.keys(DN_LOCALES).map(function (l) { return { value: l, label: l }; }),
+        onChange: function (v) {
+          // Reload with the new locale so all scenes (mounted from rendered
+          // DN_LOCALES.screens) re-render cleanly.
+          var qs = new URLSearchParams(window.location.search);
+          qs.set('locale', v);
+          window.location.search = '?' + qs.toString();
+        },
+      });
+    })();
+  </script>
+</body>
+</html>

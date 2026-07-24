@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driversnote Locales Showcase</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="phone-mockup.css">
+  <link rel="stylesheet" href="tailwind.built.css">
+
+  <!-- Preview mode: hide chrome when embedded via ?preview=1 -->
+  <style>
+    body.is-preview { margin: 0; background: transparent; }
+    body.is-preview > nav,
+    body.is-preview > header { display: none !important; }
+    body.is-preview > main {
+      padding: 0 !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    body.is-preview > main > *:not(:first-child) { display: none !important; }
+    body.is-preview > main > .bg-mist {
+      background: transparent !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      width: 100%;
+      height: 100vh;
+    }
+    body.is-preview .ls-stage {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100vmin;
+      max-height: 100vmin;
+      border-radius: 0 !important;
+    }
+  </style>
+  <script>
+    if (new URLSearchParams(window.location.search).get('preview') === '1') {
+      document.addEventListener('DOMContentLoaded', function () {
+        document.body.classList.add('is-preview');
+      });
+    }
+  </script>
+
+  <style>
+    /* ── 1:1 stage ─────────────────────────────────────────────── */
+    .ls-stage {
+      position: relative;
+      width: 600px;
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      border-radius: 24px;
+      isolation: isolate;
+      background: transparent;
+      container-type: inline-size;
+      container-name: ls;
+    }
+
+    /* Two crossfade background layers (solid color first draft;
+       swap background-color → background-image when assets land). */
+    .ls-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.75s ease;
+      z-index: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .ls-bg.is-active { opacity: 1; }
+
+    /* Card slot container: fills the stage, cards stack inside.
+       Scaled with the stage so the card visually shrinks on smaller
+       containers without changing its internal 358px layout. */
+    .ls-card-stack {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      transform: scale(calc(100cqi / 600px));
+      transform-origin: center center;
+    }
+
+    /* Card slot: base width 358 (native). Incoming cards enter at
+       scale 1.0223 (358 + 8 = 366 effective width), fully covering
+       the resting card beneath. On arrival the previous card is
+       removed instantly while the new one settles to scale 1.
+
+       Phase 1 (.is-in)       : slide from below at oversize scale
+       Phase 2 (.is-settled)  : shrink to native size at rest */
+    .ls-card {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, calc(-50% + 700px)) scale(1.0223);
+      opacity: 0;
+      transition:
+        transform 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity   0.5s ease;
+      width: 358px;
+      /* Keep the card on a composited layer through the slide + settle
+         so the transform end doesn't trigger a text re-raster (visible
+         as a sub-pixel glyph shift right after the scale completes). */
+      will-change: transform;
+      backface-visibility: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* Shadow lives on the rounded element itself so it shape-clips
+       to border-radius. Applying `filter: drop-shadow` to the wrapper
+       instead shadows the union of all painted descendant alpha
+       (including the card's own --dn-shadow-card halo), which prints
+       a near-rectangular outline that breaks past the rounded corners. */
+    .ls-card .dn-mockup__trip-card-large {
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.28);
+    }
+    .ls-card.is-in {
+      transform: translate(-50%, -50%) scale(1.0223);
+      opacity: 1;
+    }
+    .ls-card.is-settled {
+      transform: translate(-50%, -50%) scale(1);
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0.32, 1);
+    }
+
+    /* The injected .dn-mockup__trip-card-large needs to behave standalone
+       (no phone screen wrapper around it). Reset width to 100% of slot
+       and disable the canonical mount keyframe so we drive its motion. */
+    .ls-card .dn-mockup__trip-card-large {
+      width: 100%;
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+
+    /* Locale label pill: bottom-left of the stage, fades with bg. */
+    .ls-label {
+      position: absolute;
+      left: 24px;
+      bottom: 24px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 9999px;
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      transition: opacity 0.45s ease;
+    }
+
+    /* ── Playback controls (Mobbin outlined pill on light bg) ──── */
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 7px 16px;
+      border-radius: 9999px;
+      border: 1px solid var(--color-graphite);
+      background: transparent;
+      color: var(--color-midnight-forest);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+    .ctrl-btn:hover {
+      background: var(--color-mist);
+      border-color: var(--color-midnight-forest);
+    }
+
+    /* ── Progress bar ─────────────────────────────────────────── */
+    .anim-progress-track {
+      width: 480px;
+      height: 4px;
+      background: var(--color-slate-shadow);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+    .anim-progress-fill {
+      height: 100%;
+      background: var(--color-midnight-forest);
+      border-radius: inherit;
+      width: 0%;
+    }
+
+    /* ── Timeline scene labels (one tick per locale) ──────────── */
+    .anim-scene-labels {
+      width: 480px;
+      display: flex;
+      margin-top: 7px;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      color: var(--color-graphite);
+    }
+    .anim-scene-labels span { flex: 1; text-align: center; }
+  </style>
+</head>
+
+<body class="bg-pure-canvas text-midnight-forest min-h-screen font-sans antialiased">
+
+  <!-- ══════════════════════════════════════════════════════════════
+       GLOBAL NAV (matches website-hero shell)
+  ═══════════════════════════════════════════════════════════════════ -->
+  <nav class="bg-pure-canvas">
+    <div class="grid grid-cols-3 items-center px-20 h-20 max-w-[1600px] mx-auto">
+      <a href="../library.html" class="flex items-center" aria-label="Driversnote">
+        <img src="../assets/logo.svg" alt="Driversnote" class="size-10" />
+      </a>
+      <div class="flex items-center justify-center gap-[32px] text-base font-semibold">
+        <a href="../library.html"
+           class="text-ash hover:text-midnight-forest transition-colors duration-150">Mockups</a>
+        <a href="../animation.html" class="text-midnight-forest">Animations</a>
+      </div>
+      <div class="flex justify-end">
+        <a href="../map-route-editor-v2.html"
+           class="group relative inline-flex items-center justify-center size-8"
+           aria-label="Routes">
+          <img src="../assets/route-icon.svg" alt="" class="size-8" />
+          <span class="pointer-events-none absolute top-full left-1/2 mt-3
+                       flex items-center h-7 px-2 rounded-lg
+                       bg-midnight-forest text-pure-canvas text-xs font-semibold whitespace-nowrap
+                       opacity-0 -translate-x-1/2
+                       transition-opacity duration-200 ease-out
+                       group-hover:opacity-100">
+            Routes
+          </span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       MAIN
+  ═══════════════════════════════════════════════════════════════════ -->
+  <main class="flex flex-col items-center pt-10 pb-20 px-20">
+
+    <div class="bg-mist rounded-3xl py-10 px-12 flex items-center justify-center">
+
+      <!-- 1:1 stage. Background layers + card slots are injected here. -->
+      <div class="ls-stage" id="ls-stage" aria-label="Locales showcase">
+        <div class="ls-bg" id="ls-bg-a"></div>
+        <div class="ls-bg" id="ls-bg-b"></div>
+        <div class="ls-card-stack" id="ls-card-stack"></div>
+        <div class="ls-label" id="ls-label" aria-live="polite">
+          <span id="ls-label-text">en-US</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Playback controls (mandatory per CLAUDE.md) -->
+    <div class="flex items-center gap-3 mt-9">
+      <button id="ctrl-playpause" class="ctrl-btn">
+        <svg id="ctrl-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+          <rect x="1.5" y="1.5" width="3.5" height="9" rx="1"/>
+          <rect x="7"   y="1.5" width="3.5" height="9" rx="1"/>
+        </svg>
+        <span id="ctrl-label">Pause</span>
+      </button>
+      <button id="ctrl-restart" class="ctrl-btn">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 6a4 4 0 1 0 .7-2.3"/>
+          <polyline points="0.5,2 2.5,3.8 2.5,1.5"/>
+        </svg>
+        Restart
+      </button>
+    </div>
+
+    <div class="anim-progress-track" id="anim-progress-track">
+      <div class="anim-progress-fill" id="anim-progress-fill"></div>
+    </div>
+
+    <div class="anim-scene-labels" id="anim-scene-labels">
+      <!-- One span per locale, rendered at boot -->
+    </div>
+
+  </main>
+
+  <!-- DN_LOCALES + sprite + rendered screen HTML -->
+  <script src="mockup-locales.js"></script>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // ── Sprite (needed so card SVG <use> references resolve) ───────
+      function injectSprite() {
+        if (document.getElementById('dn-sprite-host')) return;
+        var host = document.createElement('div');
+        host.id = 'dn-sprite-host';
+        host.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+        host.innerHTML = DN_SPRITE_HTML;
+        document.body.appendChild(host);
+      }
+
+      // ── Cycle config ──────────────────────────────────────────────
+      // Each locale shows a landmark photo aligned to the card's market.
+      function landmarkFor(locale) {
+        return '/screenkit/assets/landmarks/' + locale + '.webp';
+      }
+
+      // Order the cycle so the dropdown locale list and the showcase
+      // share the same sequence. en-US first by convention.
+      var LOCALE_ORDER = [
+        'en-US', 'en-GB', 'en-AU', 'en-CA',
+        'da-DK', 'de-DE', 'fr-FR', 'nl-NL', 'sv-SE'
+      ].filter(function (l) { return DN_LOCALES[l]; });
+
+      var ENTER_MS = 700;   // card slide-in duration (matches .ls-card transition)
+      var HOLD_MS  = 2200;  // dwell on each locale
+      var STEP_MS  = ENTER_MS + HOLD_MS;          // one locale tick
+      var TOTAL_MS = STEP_MS * LOCALE_ORDER.length;
+
+      // ── DOM refs ──────────────────────────────────────────────────
+      var stack    = document.getElementById('ls-card-stack');
+      var bgA      = document.getElementById('ls-bg-a');
+      var bgB      = document.getElementById('ls-bg-b');
+      var labelEl  = document.getElementById('ls-label-text');
+      var labels   = document.getElementById('anim-scene-labels');
+      var progressFill  = document.getElementById('anim-progress-fill');
+      var progressTrack = document.getElementById('anim-progress-track');
+      var playpauseBtn  = document.getElementById('ctrl-playpause');
+      var ctrlIcon     = document.getElementById('ctrl-icon');
+      var ctrlLabel    = document.getElementById('ctrl-label');
+
+      // ── Build scene labels (one tick per locale) ──────────────────
+      LOCALE_ORDER.forEach(function (l) {
+        var s = document.createElement('span');
+        s.textContent = l;
+        labels.appendChild(s);
+      });
+
+      // ── Asset path fix (rendered templates use ../assets/) ────────
+      function fixAssetPaths(html) {
+        return html.replace(/(src|href)="\.\.\/assets\//g, '$1="/screenkit-anim/assets/');
+      }
+
+      // ── Card factory: extracts first trip card for a locale ───────
+      // The card relies on design tokens declared on :where(.dn-mockup),
+      // so we wrap it in a .dn-mockup ancestor here. We deliberately
+      // skip .dn-mockup__screen so the cqi scale transform does not fire
+      // — the card should render at its native pixel size inside the slot.
+      function buildCardFor(locale) {
+        var entry = DN_LOCALES[locale];
+        if (!entry || !entry.screens || !entry.screens.inbox) return null;
+        var tmp = document.createElement('div');
+        tmp.innerHTML = fixAssetPaths(entry.screens.inbox);
+        var card = tmp.querySelector('.dn-mockup__trip-card-large');
+        if (!card) return null;
+
+        var slot = document.createElement('div');
+        slot.className = 'ls-card';
+        slot.setAttribute('data-locale', locale);
+
+        var mockup = document.createElement('div');
+        mockup.className = 'dn-mockup';
+        mockup.appendChild(card);
+        slot.appendChild(mockup);
+        return slot;
+      }
+
+      // ── Timer registry ────────────────────────────────────────────
+      var timers = [];
+      function schedule(fn, delay) {
+        var id = setTimeout(fn, delay);
+        timers.push(id);
+        return id;
+      }
+      function clearTimers() {
+        timers.forEach(function (id) { clearTimeout(id); });
+        timers = [];
+      }
+
+      // ── Background crossfade ───────────────────────────────────────
+      // Two layers swap roles each tick: the inactive one receives the
+      // new colour, then gets `.is-active`, fading over the old one.
+      var bgToggle = 0;
+      function setBackground(url) {
+        var incoming = bgToggle === 0 ? bgA : bgB;
+        var outgoing = bgToggle === 0 ? bgB : bgA;
+        incoming.style.backgroundImage = 'url("' + url + '")';
+        incoming.classList.add('is-active');
+        outgoing.classList.remove('is-active');
+        bgToggle = 1 - bgToggle;
+      }
+
+      // ── Card cycle ────────────────────────────────────────────────
+      var prevCard = null;
+
+      function showLocale(locale) {
+        labelEl.textContent = locale;
+
+        var card = buildCardFor(locale);
+        if (!card) return;
+
+        stack.appendChild(card);
+        // Force a layout pass so the initial transform (offscreen) is
+        // committed before we flip to .is-in. Without this rAF, browsers
+        // collapse both states into one and the slide-in is skipped.
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            card.classList.add('is-in');
+          });
+        });
+
+        // Once the new card has slid in at oversize scale and is fully
+        // covering the previous, drop the previous from the DOM (instant
+        // hide, no fade), settle the new one to native size, and swap
+        // the background in sync with the scale-down so the landmark
+        // reveal lands as the card relaxes rather than during the slide.
+        var arriving = card;
+        var dying = prevCard;
+        schedule(function () {
+          if (dying && dying.parentNode) dying.parentNode.removeChild(dying);
+          arriving.classList.add('is-settled');
+          setBackground(landmarkFor(locale));
+        }, ENTER_MS);
+
+        prevCard = card;
+      }
+
+      // ── Timeline ──────────────────────────────────────────────────
+      function scheduleFrom(offsetMs) {
+        LOCALE_ORDER.forEach(function (locale, idx) {
+          var t = idx * STEP_MS;
+          var delay = t - offsetMs;
+          if (delay >= 0) schedule(function () { showLocale(locale); }, delay);
+        });
+        // Loop back at the end: keep the trailing card in place so the
+        // next cycle's en-US slides in over it as just another handoff.
+        // Resetting here would empty the stage for one frame and read as
+        // a hard restart instead of a seamless loop.
+        schedule(function () {
+          startTime = Date.now();
+          scheduleFrom(0);
+        }, TOTAL_MS - offsetMs);
+      }
+
+      function resetAll() {
+        // Remove all cards. The next scheduleFrom run will repopulate.
+        Array.prototype.slice.call(stack.children).forEach(function (n) {
+          n.parentNode.removeChild(n);
+        });
+        prevCard = null;
+        bgA.classList.remove('is-active');
+        bgB.classList.remove('is-active');
+        bgToggle = 0;
+      }
+
+      // ── Playback ──────────────────────────────────────────────────
+      var rafId     = null;
+      var isPlaying = true;
+      var startTime = 0;
+      var pausedAt  = 0;
+
+      function tickProgress() {
+        if (!isPlaying) return;
+        var elapsed = (Date.now() - startTime) % TOTAL_MS;
+        progressFill.style.width = (elapsed / TOTAL_MS * 100).toFixed(2) + '%';
+        rafId = requestAnimationFrame(tickProgress);
+      }
+
+      function play(offsetMs) {
+        offsetMs = offsetMs || 0;
+        startTime = Date.now() - offsetMs;
+        scheduleFrom(offsetMs);
+        isPlaying = true;
+        setPlayIcon(false);
+        tickProgress();
+      }
+
+      function pause() {
+        pausedAt = (Date.now() - startTime) % TOTAL_MS;
+        clearTimers();
+        cancelAnimationFrame(rafId);
+        isPlaying = false;
+        setPlayIcon(true);
+      }
+
+      function restart() {
+        clearTimers();
+        cancelAnimationFrame(rafId);
+        resetAll();
+        pausedAt = 0;
+        play(0);
+      }
+
+      function setPlayIcon(showPlay) {
+        if (showPlay) {
+          ctrlIcon.innerHTML = '<polygon points="2,1.5 10.5,6 2,10.5"/>';
+          ctrlLabel.textContent = 'Play';
+        } else {
+          ctrlIcon.innerHTML = '<rect x="1.5" y="1.5" width="3.5" height="9" rx="1"/><rect x="7" y="1.5" width="3.5" height="9" rx="1"/>';
+          ctrlLabel.textContent = 'Pause';
+        }
+      }
+
+      playpauseBtn.addEventListener('click', function () {
+        if (isPlaying) pause();
+        else play(pausedAt);
+      });
+      document.getElementById('ctrl-restart').addEventListener('click', restart);
+      progressTrack.addEventListener('click', function (e) {
+        var rect = progressTrack.getBoundingClientRect();
+        var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        clearTimers();
+        cancelAnimationFrame(rafId);
+        resetAll();
+        play(pct * TOTAL_MS);
+      });
+
+      // ── Boot ──────────────────────────────────────────────────────
+      function boot() {
+        injectSprite();
+
+        // Reduced motion: show first locale as a static poster.
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          var first = LOCALE_ORDER[0];
+          setBackground(landmarkFor(first));
+          labelEl.textContent = first;
+          var card = buildCardFor(first);
+          if (card) { stack.appendChild(card); card.classList.add('is-in'); }
+          setPlayIcon(true);
+          isPlaying = false;
+          return;
+        }
+
+        // Seed the stage with the LAST locale's background so the very
+        // first en-US slide reveals over sv-SE, matching the loop seam.
+        setBackground(landmarkFor(LOCALE_ORDER[LOCALE_ORDER.length - 1]));
+        play(0);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+      } else {
+        boot();
+      }
+    })();
+  </script>
+</body>
+</html>

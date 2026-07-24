@@ -1,0 +1,1503 @@
+/*
+ * Driversnote Phone Mockup — phone-mockup.css
+ * All selectors scoped under .dn-mockup. Zero global styles. Zero runtime JS.
+ * Browser support: Chrome 105+, Safari 16+, Firefox 110+ (Baseline 2024)
+ */
+
+/* 1. DESIGN TOKENS ------------------------------------------------- */
+/* Sourced from Figma Mobile Design System: figma.com/design/tzKxz2puJu1UgJwWPrwwRD */
+:where(.dn-mockup) {
+  /* Interactive */
+  --dn-color-primary:             #003328;  /* interactive/primary  — active borders, emphasised items */
+  --dn-color-brand:               #008568;  /* interactive/accent   — primary buttons, active icons */
+  --dn-color-interactive-secondary: #757575; /* interactive/secondary — default input borders, checkboxes */
+  /* Content */
+  --dn-color-content-primary:     #121212;
+  --dn-color-content-secondary:   #424242;
+  --dn-color-content-tertiary:    #757575;
+  /* Background */
+  --dn-color-bg-screen:           #f5f5f5;
+  --dn-color-bg-elevated:         #ffffff;
+  --dn-color-bg-neutral:          #f5f5f5;
+  --dn-color-bg-brand:            #eff8f8;  /* background/brand — icon/illustration tinted surfaces */
+  /* Border */
+  --dn-color-border:              #e0e0e0;  /* border/neutral — separators, most dividers */
+  --dn-color-border-control:      #bdbdbd;  /* border/control — higher-contrast borders, avoid on interactive */
+  /* Sentiment */
+  --dn-color-positive:            #24b47e;
+  --dn-color-negative:            #e25950;
+  --dn-color-warning:             #e39f48;
+  /* Misc */
+  --dn-color-map-fallback:        #e8eef2;
+  --dn-color-disabled-text:       #9e9e9e;
+  --dn-font-body:     'Open Sans', system-ui, -apple-system, sans-serif;
+  --dn-font-status:   -apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif;
+  --dn-shadow-card:   0 1px 4px 0 rgba(0, 0, 0, 0.15);
+  --dn-radius-card:   8px;
+  --dn-radius-pill:   100px;
+}
+
+/* 2. SCALING WRAPPER ----------------------------------------------- */
+/* Scoped box-sizing reset: host pages (e.g. Tailwind) may apply border-box
+   globally, but the export script does not. Declaring it here ensures
+   height + padding math is consistent in every embedding context. */
+.dn-mockup *,
+.dn-mockup *::before,
+.dn-mockup *::after {
+  box-sizing: border-box;
+}
+
+/* .dn-mockup is the outer layout box AND a query container, so its
+   descendants (.dn-mockup__bezel in particular) can scale their padding
+   and border-radius with the mockup width via cqi units. */
+.dn-mockup {
+  display: block;
+  position: relative;
+  width: 100%;
+  container-type: inline-size;
+}
+
+/* .dn-mockup__bezel is a pass-through by default. The framed variant
+   styles it as the iPhone bezel. Padding and border-radius use cqi so
+   they grow proportionally with the mockup width. */
+.dn-mockup__bezel {
+  position: relative;
+}
+
+/* The screen is the inner scaling container. Its content box is exactly
+   390:844, so 100cqi inside it maps cleanly to the stage's coordinate
+   space regardless of any bezel padding above it. */
+.dn-mockup__screen {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 390 / 844;
+  container-type: inline-size;
+  overflow: hidden;
+}
+
+/* Fixed 390×844px stage, scaled via transform so all px + keyframes scale too. */
+.dn-mockup__stage {
+  position: absolute;
+  inset: 0;
+  width: 390px;
+  height: 844px;
+  transform-origin: top left;
+  /* 100cqi / 390px → unitless ratio. Dividing by unitless 390 would yield
+     an invalid length, not a scale factor. */
+  transform: scale(calc(100cqi / 390px));
+  font-family: var(--dn-font-body);
+  font-size: 14px;
+  color: var(--dn-color-content-primary);
+  background-color: var(--dn-color-bg-screen);
+  border-radius: 44px;
+  overflow: hidden;
+}
+
+/* 3. OPTIONAL IPHONE BEZEL ---------------------------------------- */
+/* Bezel dimensions are authored at the native 390 width and follow the
+   concentric rule: inner radius = outer radius − padding.
+   padding 8px → (8 / 390) * 100cqi
+   bezel radius 56px → outer
+   screen radius 48px → 56 − 8
+   stage radius   48px → matches screen so the visible content corner
+                         lines up with the mask
+   At any container width the bezel ring and corner rounding grow with
+   the mockup so a 700px hero looks like a phone, not a thin frame. */
+.dn-mockup--framed .dn-mockup__bezel {
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  /* Force a new stacking + paint context so the bezel and its painted
+     descendants compose into one rounded surface. */
+  isolation: isolate;
+  padding: calc(100cqi * 8 / 390);
+  border-radius: calc(100cqi * 56 / 390);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow:
+    0 30px 60px -20px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.60),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.10);
+}
+
+/* Backdrop-filter lives on a clipped pseudo-element instead of the bezel
+   itself. Reason: Chromium and Safari bleed the filtered region to the
+   rectangular bounding box of the host element, leaving a square corner
+   peeking out beyond border-radius. Applying the filter on an absolutely
+   positioned ::after that gets its own overflow:hidden + border-radius
+   gives us a hard clip on the filtered output while leaving the bezel's
+   outer box-shadow rendered unclipped.
+   The filter reads --demo-bezel-filter so animation pages can swap
+   between glass (blur(20px) saturate(180%)) and none via the preset
+   dropdown without touching the bezel element directly. */
+.dn-mockup--framed .dn-mockup__bezel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  z-index: -1;
+  -webkit-backdrop-filter: var(--demo-bezel-filter, blur(20px) saturate(180%));
+  backdrop-filter: var(--demo-bezel-filter, blur(20px) saturate(180%));
+  pointer-events: none;
+}
+/* Refraction gradient: top-left light catch fades diagonally — simulates thick glass */
+.dn-mockup--framed .dn-mockup__bezel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.05) 40%,
+    rgba(255, 255, 255, 0.00) 60%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  pointer-events: none;
+}
+.dn-mockup--framed .dn-mockup__screen {
+  border-radius: calc(100cqi * 48 / 390);
+}
+.dn-mockup--framed .dn-mockup__stage {
+  border-radius: 48px;
+}
+
+/* 4. STATUS BAR ---------------------------------------------------- */
+.dn-mockup__status-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 54px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 10px 6px;
+  z-index: 10;
+  pointer-events: none;
+}
+.dn-mockup__status-time {
+  font-family: var(--dn-font-status);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 22px;
+  letter-spacing: -0.4px;
+  color: var(--dn-color-content-primary);
+  width: 54px;
+  text-align: center;
+  visibility: hidden;
+}
+.dn-mockup__dynamic-island {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 126px;
+  height: 37px;
+  background: var(--dn-color-content-primary);
+  border-radius: var(--dn-radius-pill);
+  visibility: hidden;
+}
+.dn-mockup__status-icons {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  color: var(--dn-color-content-primary);
+  visibility: hidden;
+}
+.dn-mockup__icon-cellular { width: 18px; height: 12px; }
+.dn-mockup__icon-wifi     { width: 17px; height: 13px; }
+.dn-mockup__icon-battery  { width: 28px; height: 13px; }
+
+/* 5. HOME INDICATOR ------------------------------------------------ */
+.dn-mockup__home-indicator {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 34px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  z-index: 10;
+  pointer-events: none;
+}
+.dn-mockup__home-bar {
+  width: 134px;
+  height: 5px;
+  background: #000;
+  border-radius: var(--dn-radius-pill);
+  visibility: hidden;
+}
+
+/* 6. NAVIGATION BAR ------------------------------------------------ */
+.dn-mockup__nav-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 83px;
+  background: var(--dn-color-bg-elevated);
+  z-index: 9;
+}
+.dn-mockup__nav-tabs {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-top: 1px solid var(--dn-color-border);
+  height: 49px;
+  overflow: hidden;
+}
+.dn-mockup__nav-tab {
+  flex: 1;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  height: 49px;
+  color: var(--dn-color-interactive-secondary);
+}
+.dn-mockup__nav-fab-spacer { box-sizing: border-box; }
+.dn-mockup__nav-tab-icon { width: 24px; height: 24px; display: block; }
+.dn-mockup__nav-tab-label {
+  font-family: var(--dn-font-body);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 12px;
+  color: var(--dn-color-interactive-secondary);
+  text-align: center;
+  white-space: nowrap;
+}
+.dn-mockup__nav-tab[data-active="true"] .dn-mockup__nav-tab-label {
+  color: var(--dn-color-brand);
+}
+.dn-mockup__nav-fab-spacer { flex: 1; }
+.dn-mockup__nav-fab {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: -5px;
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+/* navbar-plus.svg has a baked-in white circle, grey border, and grey plus
+   glyph — no CSS background or tinting required. */
+.dn-mockup__nav-fab-icon { width: 54px; height: 54px; }
+
+/* 7. INBOX SCREEN -------------------------------------------------- */
+.dn-mockup__inbox-header-top {
+  background: var(--dn-color-bg-elevated);
+  border-bottom: 1px solid var(--dn-color-border);
+  padding: 26px 16px 0;
+}
+.dn-mockup__inbox-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+}
+.dn-mockup__auto-track { display: flex; align-items: center; gap: 8px; }
+.dn-mockup__toggle {
+  position: relative;
+  width: 44px;
+  height: 28px;
+  background: var(--dn-color-positive);
+  border-radius: var(--dn-radius-pill);
+  flex-shrink: 0;
+}
+.dn-mockup__toggle::after {
+  content: '';
+  position: absolute;
+  right: 3px; top: 3px;
+  width: 22px; height: 22px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.dn-mockup__toggle-check {
+  position: absolute;
+  right: 3px; top: 3px;
+  width: 22px; height: 22px;
+  z-index: 1;
+}
+.dn-mockup__toggle-label {
+  font-size: 14px; font-weight: 400; line-height: 22px;
+  color: var(--dn-color-content-secondary);
+  white-space: nowrap;
+}
+.dn-mockup__configure-btn {
+  font-size: 16px; font-weight: 600; line-height: 24px; letter-spacing: -0.16px;
+  color: var(--dn-color-primary);
+  white-space: nowrap;
+}
+.dn-mockup__inbox-title-row {
+  background: var(--dn-color-bg-elevated);
+  border-bottom: 1px solid var(--dn-color-border);
+}
+.dn-mockup__inbox-title-inner {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 8px 16px;
+}
+.dn-mockup__inbox-title {
+  font-size: 24px; font-weight: 600; line-height: 31px; letter-spacing: -0.36px;
+  color: var(--dn-color-content-primary);
+}
+.dn-mockup__inbox-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dn-color-negative);
+  border-radius: 16px;
+  min-width: 32px; height: 32px;
+  padding: 0 8px;
+  margin-left: 8px;
+  font-size: 20px; font-weight: 600; line-height: 26px; letter-spacing: -0.2px;
+  color: #ffffff;
+}
+.dn-mockup__review-all {
+  margin-left: auto;
+  font-size: 16px; font-weight: 600; line-height: 24px; letter-spacing: -0.16px;
+  color: var(--dn-color-primary);
+  white-space: nowrap;
+}
+.dn-mockup__inbox-scroll {
+  position: absolute;
+  top: 114px; left: 0; right: 0; bottom: 83px;
+  overflow: hidden;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 8. TRIP CARD LARGE (Inbox) --------------------------------------- */
+.dn-mockup__trip-card-large {
+  background: var(--dn-color-bg-elevated);
+  border-radius: 8px 8px 12px 12px;
+  box-shadow: var(--dn-shadow-card);
+  width: 100%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.dn-mockup__map-area {
+  position: relative;
+  height: 160px; width: 100%;
+  overflow: hidden;
+  background-color: var(--dn-color-map-fallback);
+  border-radius: 8px 8px 0 0;
+}
+.dn-mockup__map-image {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.dn-mockup__route-svg {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-60%, -50%);
+  width: 128px; height: 130px;
+  overflow: visible;
+}
+.dn-mockup__route-path {
+  fill: none;
+  stroke: var(--dn-color-brand);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  --dn-route-len: 240;
+}
+.dn-mockup__route-pin { fill: var(--dn-color-primary); }
+.dn-mockup__route-pin-label {
+  font-family: var(--dn-font-body);
+  font-size: 11.5px; font-weight: 600;
+  fill: #fff;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.dn-mockup__map-meta {
+  position: absolute;
+  top: 50%; right: 4px;
+  transform: translateY(-50%);
+  box-sizing: border-box;
+  width: 88px; height: 104px;
+  background: rgba(30, 36, 36, 0.85);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  color: #fff;
+}
+.dn-mockup__map-meta-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.dn-mockup__map-meta-label {
+  font-size: 10px; font-weight: 400; line-height: 12px;
+  text-align: center; width: 100%;
+}
+.dn-mockup__map-meta-value {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  white-space: nowrap;
+}
+.dn-mockup__map-meta-number {
+  font-size: 20px; font-weight: 600; line-height: 26px; letter-spacing: -0.2px;
+}
+.dn-mockup__map-meta-unit {
+  font-size: 10px; font-weight: 400; line-height: 12px;
+  margin-top: 9px; margin-left: 2px;
+}
+.dn-mockup__map-meta-currency {
+  font-size: 10px; font-weight: 400; line-height: 12px;
+  margin-top: 9px; margin-right: 2px;
+}
+/* Maps Legal overlay — matches Figma "Apple Maps / Legal" watermark */
+.dn-mockup__map-legal {
+  position: absolute;
+  bottom: 4px; left: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+.dn-mockup__map-legal-logo {
+  font-size: 10px; font-weight: 600; line-height: 1;
+  color: var(--dn-color-content-secondary);
+  white-space: nowrap;
+}
+.dn-mockup__map-legal-text {
+  font-size: 10px; font-weight: 400; line-height: 1;
+  color: var(--dn-color-content-secondary);
+  white-space: nowrap;
+}
+.dn-mockup__card-details {
+  background: var(--dn-color-bg-elevated);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 0 0 8px 8px;
+}
+
+/* 9. LOCATION BLOCK ------------------------------------------------ */
+.dn-mockup__location-block {
+  border: 1px solid var(--dn-color-border);
+  border-radius: 4px;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  min-height: 110px;
+}
+.dn-mockup__location-indicators {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 44px;
+  padding: 14px 10px;
+  flex-shrink: 0;
+}
+.dn-mockup__location-label-icon {
+  width: 24px; height: 24px;
+  display: block;
+  flex-shrink: 0;
+}
+.dn-mockup__location-connector {
+  width: 1px; flex: 1; min-height: 20px;
+  background: repeating-linear-gradient(
+    to bottom,
+    #E0E0E0 0px, #E0E0E0 2px,
+    transparent 2px, transparent 4px
+  );
+  margin: 4px 0;
+}
+.dn-mockup__location-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 7px 0;
+  min-width: 0;
+}
+.dn-mockup__location-entry { display: flex; flex-direction: column; padding-right: 12px; }
+.dn-mockup__location-name {
+  font-size: 14px; font-weight: 600; line-height: 22px; letter-spacing: 0.07px;
+  color: var(--dn-color-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dn-mockup__location-address {
+  font-size: 12px; font-weight: 600; line-height: 16px;
+  color: var(--dn-color-content-tertiary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dn-mockup__location-divider {
+  height: 1px;
+  background: var(--dn-color-border);
+  margin: 0;
+}
+.dn-mockup__location-times {
+  width: 93px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--dn-color-border);
+}
+.dn-mockup__location-time {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 12px;
+  font-size: 11px; font-weight: 600; line-height: 16px;
+  color: var(--dn-color-primary);
+  text-decoration: underline;
+  text-align: left;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.dn-mockup__location-time-divider { height: 1px; width: 100%; background: var(--dn-color-border); flex-shrink: 0; }
+.dn-mockup__location-times-divider,
+.dn-mockup__location-times-vr { display: none; }
+
+/* 10. CATEGORY SELECTOR -------------------------------------------- */
+.dn-mockup__category-selector {
+  border: 1px solid var(--dn-color-border);
+  border-radius: 4px;
+  display: flex;
+  box-sizing: border-box;
+  height: 43px;
+  overflow: hidden;
+}
+.dn-mockup__category-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+}
+.dn-mockup__category-option + .dn-mockup__category-option {
+  border-left: 1px solid var(--dn-color-border);
+}
+.dn-mockup__category-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.dn-mockup__category-icon svg { width: 20px; height: 20px; }
+.dn-mockup__category-label {
+  font-size: 12px; font-weight: 600; line-height: 16px;
+  color: var(--dn-color-interactive-secondary);
+  text-align: center; white-space: nowrap;
+}
+.dn-mockup__category-option[data-active="true"] .dn-mockup__category-label {
+  color: var(--dn-color-primary);
+}
+/* Extended options (Medical, Charity) hidden by default */
+.dn-mockup__category-option--extended { display: none; }
+/* US variant: show 4 text-only tabs, hide icons */
+.dn-mockup__category-selector--us .dn-mockup__category-option--extended { display: flex; }
+.dn-mockup__category-selector--us .dn-mockup__category-icon { display: none; }
+
+/* 11. NOTE INPUT --------------------------------------------------- */
+.dn-mockup__note-input {
+  border: 1px solid var(--dn-color-border);
+  border-radius: 4px;
+  background: var(--dn-color-bg-elevated);
+  box-sizing: border-box;
+  height: 44px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dn-mockup__note-icon { width: 24px; height: 24px; flex-shrink: 0; color: var(--dn-color-content-tertiary); }
+.dn-mockup__note-placeholder {
+  font-size: 12px; font-weight: 600; line-height: 16px;
+  color: var(--dn-color-content-tertiary);
+  white-space: nowrap;
+}
+
+/* 12. CARD BUTTONS ------------------------------------------------- */
+.dn-mockup__card-buttons { display: flex; gap: 8px; align-items: center; }
+.dn-mockup__btn-delete {
+  box-sizing: border-box;
+  width: 48px; height: 48px;
+  border: 1px solid var(--dn-color-interactive-secondary);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: transparent;
+  color: var(--dn-color-content-primary);
+}
+.dn-mockup__btn-delete svg { width: 24px; height: 24px; }
+.dn-mockup__btn-review {
+  box-sizing: border-box;
+  flex: 1; height: 48px;
+  background: var(--dn-color-brand);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 24px;
+}
+.dn-mockup__btn-review-label {
+  font-size: 16px; font-weight: 600; line-height: 24px; letter-spacing: -0.16px;
+  color: #fff;
+  text-align: center; white-space: nowrap;
+}
+
+/* 13. ALL TRIPS SCREEN --------------------------------------------- */
+.dn-mockup__trips-header {
+  background: var(--dn-color-bg-elevated);
+  border-bottom: 1px solid var(--dn-color-border);
+  position: relative;
+  z-index: 8;
+}
+.dn-mockup__trips-title-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  position: relative;
+}
+.dn-mockup__trips-month-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.dn-mockup__trips-month {
+  font-size: 16px; font-weight: 600; line-height: 24px; letter-spacing: -0.16px;
+  color: var(--dn-color-content-primary);
+  text-align: center; white-space: nowrap;
+}
+.dn-mockup__trips-chevron {
+  width: 24px; height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dn-color-content-primary);
+  flex-shrink: 0;
+}
+.dn-mockup__trips-chevron svg { width: 24px; height: 24px; }
+.dn-mockup__trips-date-subtitle {
+  font-size: 14px; font-weight: 400; line-height: 22px;
+  color: var(--dn-color-content-tertiary);
+  text-align: center; white-space: nowrap;
+}
+.dn-mockup__trips-header-left {
+  position: absolute;
+  left: 16px; top: 50%;
+  transform: translateY(-50%);
+  display: flex; align-items: center;
+}
+.dn-mockup__trips-header-right {
+  position: absolute;
+  right: 16px; top: 50%;
+  transform: translateY(-50%);
+  display: flex; align-items: center;
+}
+.dn-mockup__trips-icon { width: 24px; height: 24px; color: var(--dn-color-primary); }
+.dn-mockup__trips-icon svg { width: 24px; height: 24px; }
+.dn-mockup__trips-scroll {
+  position: absolute;
+  top: 90px; left: 0; right: 0; bottom: 83px;
+  overflow: hidden;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+/* 14. TRIP CARD SMALL (All Trips) ---------------------------------- */
+.dn-mockup__trip-card-small {
+  background: var(--dn-color-bg-elevated);
+  border-radius: var(--dn-radius-card);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  box-shadow: var(--dn-shadow-card);
+}
+.dn-mockup__trip-locations {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* Dotted connector between the two inline pins.
+   Pins are 12px tall with margin-top:4 → bottom of first pin ≈ 16px.
+   Row height ≈ 36px + gap 12px → top of second pin ≈ 52px.
+   Connector runs between those two points. */
+.dn-mockup__trip-locations::after {
+  content: '';
+  position: absolute;
+  left: 6px; top: 16px;
+  width: 1px; height: 36px;
+  background: repeating-linear-gradient(
+    to bottom,
+    #E0E0E0 0px, #E0E0E0 2px,
+    transparent 2px, transparent 4px
+  );
+}
+/* Pin sits inline as first child of each location row */
+.dn-mockup__trip-pin-icon {
+  width: 12px; height: 12px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 4px; /* vertically centres with 20px-line-height name text */
+}
+.dn-mockup__trip-location-row { display: flex; gap: 16px; align-items: flex-start; }
+.dn-mockup__trip-location-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dn-mockup__trip-location-name {
+  font-size: 14px; font-weight: 600; line-height: 20px;
+  color: var(--dn-color-content-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dn-mockup__trip-location-address {
+  font-size: 12px; font-weight: 600; line-height: 16px;
+  color: var(--dn-color-content-tertiary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dn-mockup__trip-time {
+  font-size: 12px; font-weight: 600; line-height: 16px;
+  color: var(--dn-color-content-secondary);
+  text-align: right; white-space: nowrap;
+  flex-shrink: 0; align-self: center;
+}
+
+/* 15. TRIP CARD FOOTER --------------------------------------------- */
+.dn-mockup__trip-card-footer { display: flex; flex-direction: column; gap: 8px; }
+.dn-mockup__trip-footer-divider { height: 1px; background: var(--dn-color-border); }
+.dn-mockup__trip-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dn-mockup__trip-category { display: flex; align-items: center; gap: 8px; }
+.dn-mockup__trip-category-icon { width: 20px; height: 20px; flex-shrink: 0; }
+.dn-mockup__trip-category-icon svg { width: 20px; height: 20px; }
+.dn-mockup__trip-category-label {
+  font-size: 14px; font-weight: 600; line-height: 20px;
+  color: var(--dn-color-content-secondary);
+  white-space: nowrap;
+}
+.dn-mockup__trip-value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-align: right; white-space: nowrap;
+}
+.dn-mockup__trip-amount,
+.dn-mockup__trip-distance {
+  font-size: 16px; font-weight: 600; line-height: 24px; letter-spacing: -0.32px;
+  color: var(--dn-color-content-primary);
+}
+.dn-mockup__trip-separator {
+  font-size: 14px; font-weight: 400; line-height: 20px;
+  color: var(--dn-color-disabled-text);
+}
+
+/* Add trip button — centred on bottom edge of last card in each group */
+.dn-mockup__trip-add-btn {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--dn-color-bg-elevated);
+  border: 1px solid var(--dn-color-border);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dn-color-content-secondary);
+  z-index: 1;
+}
+.dn-mockup__trip-add-btn svg { width: 16px; height: 16px; }
+
+/* 16. SECTION HEADER (All Trips) ----------------------------------- */
+.dn-mockup__section-header { display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+.dn-mockup__section-date {
+  font-size: 24px; font-weight: 600; line-height: 31px; letter-spacing: -0.36px;
+  color: var(--dn-color-content-primary);
+}
+.dn-mockup__section-meta { display: flex; align-items: center; gap: 8px; }
+.dn-mockup__section-meta-item {
+  font-size: 14px; font-weight: 600; line-height: 22px; letter-spacing: 0.07px;
+  color: var(--dn-color-content-tertiary);
+  white-space: nowrap;
+}
+.dn-mockup__section-meta-divider {
+  width: 1px; height: 16px;
+  background: var(--dn-color-border);
+  flex-shrink: 0;
+}
+.dn-mockup__trip-section { display: flex; flex-direction: column; gap: 16px; }
+
+/* 17. REPORT SCREEN ------------------------------------------------- */
+/* Active nav tab: colour icon to match label */
+.dn-mockup__nav-tab[data-active="true"] .dn-mockup__nav-tab-icon { color: var(--dn-color-brand); }
+
+.dn-mockup__report-topbar {
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 70px;
+  background: var(--dn-color-bg-elevated);
+  border-bottom: 1px solid var(--dn-color-border);
+  z-index: 5;
+}
+.dn-mockup__report-titlebar {
+  position: absolute;
+  top: 26px; left: 0; right: 0; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 16px;
+}
+.dn-mockup__report-title-text {
+  font-size: 16px; font-weight: 600; line-height: 24px;
+  letter-spacing: -0.16px;
+  color: var(--dn-color-content-primary);
+}
+.dn-mockup__report-back {
+  position: absolute; left: 16px;
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px;
+  color: var(--dn-color-primary);
+}
+.dn-mockup__report-back svg { width: 24px; height: 24px; }
+.dn-mockup__report-actions {
+  position: absolute; right: 16px;
+  display: flex; align-items: center; gap: 8px;
+  color: var(--dn-color-primary);
+}
+.dn-mockup__report-actions svg { width: 24px; height: 24px; }
+
+.dn-mockup__report-scroll {
+  position: absolute;
+  top: 70px; left: 0; right: 0;
+  overflow: hidden;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+/* Summary card */
+.dn-mockup__report-summary {
+  background: var(--dn-color-bg-elevated);
+  border-radius: var(--dn-radius-card);
+  box-shadow: var(--dn-shadow-card);
+  padding: 20px 16px 16px;
+  display: flex; flex-direction: column; gap: 20px;
+  flex-shrink: 0;
+}
+.dn-mockup__report-heading {
+  font-size: 24px; font-weight: 600; line-height: 28px;
+  letter-spacing: -0.24px;
+  color: var(--dn-color-content-primary);
+}
+.dn-mockup__report-daterange {
+  font-size: 17px; font-weight: 600; line-height: 20px;
+  color: var(--dn-color-content-primary);
+  margin-top: 6px;
+}
+.dn-mockup__report-section-title {
+  font-size: 17px; font-weight: 600; line-height: 20px;
+  color: var(--dn-color-content-primary);
+  margin-bottom: 12px;
+}
+.dn-mockup__report-table { display: flex; flex-direction: column; gap: 0; }
+.dn-mockup__report-table-row {
+  display: flex; align-items: baseline; gap: 8px;
+}
+.dn-mockup__report-table-row--header {
+  font-size: 14px; font-weight: 600; line-height: 16px;
+  color: var(--dn-color-content-primary);
+  padding-bottom: 8px;
+}
+.dn-mockup__report-table-row--data {
+  font-size: 14px; font-weight: 400; line-height: 20px;
+  color: var(--dn-color-content-primary);
+  padding: 6px 0;
+}
+.dn-mockup__report-table-divider {
+  height: 1px; background: var(--dn-color-border);
+}
+.dn-mockup__report-table-col { flex: 1; min-width: 0; }
+.dn-mockup__report-table-col--center { text-align: center; }
+.dn-mockup__report-table-col--right  { text-align: right;  }
+
+/* Trip rows */
+.dn-mockup__report-trip {
+  background: var(--dn-color-bg-elevated);
+  border-radius: var(--dn-radius-card);
+  box-shadow: var(--dn-shadow-card);
+  padding: 14px 16px 12px;
+  display: flex; flex-direction: column; gap: 8px;
+  flex-shrink: 0;
+}
+.dn-mockup__report-trip-date {
+  font-size: 14px; font-weight: 600; line-height: 20px;
+  color: var(--dn-color-content-primary);
+}
+.dn-mockup__report-trip-locations {
+  display: flex; gap: 8px; align-items: stretch;
+}
+.dn-mockup__report-pin-col {
+  display: flex; flex-direction: column; align-items: center;
+  flex-shrink: 0; padding-top: 4px;
+}
+.dn-mockup__report-pin-icon { width: 12px; height: 12px; flex-shrink: 0; display: block; }
+.dn-mockup__report-pin-line {
+  width: 1px; flex: 1; min-height: 8px;
+  background: repeating-linear-gradient(
+    to bottom,
+    #E0E0E0 0px, #E0E0E0 2px,
+    transparent 2px, transparent 4px
+  );
+  margin: 2px 0;
+}
+.dn-mockup__report-trip-addresses {
+  display: flex; flex-direction: column; gap: 12px;
+  flex: 1; min-width: 0;
+}
+.dn-mockup__report-trip-address {
+  font-size: 14px; font-weight: 400; line-height: 20px;
+  color: var(--dn-color-content-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dn-mockup__report-trip-divider { height: 1px; background: var(--dn-color-border); }
+.dn-mockup__report-trip-footer {
+  display: flex; align-items: center; gap: 8px;
+}
+.dn-mockup__report-trip-category {
+  flex: 1;
+  font-size: 14px; font-weight: 400; line-height: 20px;
+  color: var(--dn-color-content-secondary);
+}
+.dn-mockup__report-trip-meta {
+  display: flex; gap: 16px;
+  font-size: 14px; font-weight: 400; line-height: 20px;
+  white-space: nowrap;
+}
+.dn-mockup__report-trip-distance { color: var(--dn-color-content-secondary); }
+.dn-mockup__report-trip-amount   { color: var(--dn-color-content-primary); }
+
+/* 18. TRACKING SCREEN ---------------------------------------------- */
+
+/* Map fills the full stage — header and bottom card overlay on top */
+.dn-mockup__tracking-map {
+  position: absolute;
+  inset: 0;
+  background-color: var(--dn-color-map-fallback);
+}
+
+/* Meta pill: centred vertically in the visible map area, anchored right */
+.dn-mockup__tracking-map .dn-mockup__map-meta {
+  top: 239px;
+  right: 12px;
+  transform: none;
+}
+
+/* Tracking header: same dark-overlay style as the meta pill */
+.dn-mockup__tracking-header {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 80px;
+  background: rgba(30, 36, 36, 0.85);
+  display: flex;
+  align-items: flex-end;
+  padding: 0 16px 14px;
+  gap: 8px;
+  z-index: 6;
+}
+.dn-mockup__tracking-header-icon {
+  width: 22px; height: 22px;
+  flex-shrink: 0;
+  color: #fff;
+}
+.dn-mockup__tracking-header-icon svg { width: 22px; height: 22px; }
+.dn-mockup__tracking-header-title {
+  font-size: 18px; font-weight: 600; line-height: 24px; letter-spacing: -0.2px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* Bottom card: location meta + stop button, floats over map */
+.dn-mockup__tracking-bottom {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: var(--dn-color-bg-elevated);
+  z-index: 6;
+}
+.dn-mockup__tracking-meta {
+  padding: 16px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Stop area: grey top border, 8px gap above button, 34px from screen bottom */
+.dn-mockup__tracking-stop-area {
+  border-top: 1px solid var(--dn-color-border);
+  padding: 8px 16px 34px;
+}
+.dn-mockup__stop-btn {
+  box-sizing: border-box;
+  width: 100%;
+  background: #C94B38;
+  border-radius: 4px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dn-mockup__stop-btn-label {
+  font-size: 16px; font-weight: 600; line-height: 24px; letter-spacing: -0.16px;
+  color: #fff;
+  text-align: center;
+}
+
+/* Placeholder for B location while trip is in progress — wraps freely */
+.dn-mockup__tracking-location-placeholder {
+  font-size: 12px; font-weight: 400; line-height: 16px;
+  color: var(--dn-color-content-tertiary);
+  white-space: normal;
+}
+
+/* ── Tracking location block ──────────────────────────────────────
+   Forked from .dn-mockup__location-* (which now belongs to the
+   inbox-card component) so the two can evolve independently. Do not
+   reintroduce shared selectors here; changes to the inbox card's
+   location-block styles must not drift this screen. */
+.dn-mockup__tracking-locblock {
+  border: 1px solid var(--dn-color-border);
+  border-radius: 4px;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  min-height: 110px;
+}
+.dn-mockup__tracking-locblock-indicators {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 44px;
+  padding: 14px 10px 16px;
+  flex-shrink: 0;
+}
+.dn-mockup__tracking-locblock-connector {
+  width: 1px;
+  flex: 1;
+  min-height: 20px;
+  background: repeating-linear-gradient(
+    to bottom,
+    #E0E0E0 0px, #E0E0E0 2px,
+    transparent 2px, transparent 4px
+  );
+  margin: 4px 0;
+}
+.dn-mockup__tracking-locblock-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.dn-mockup__tracking-locblock-entry {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 12px 0 0;
+  min-width: 0;
+}
+.dn-mockup__tracking-locblock-divider {
+  height: 1px;
+  background: var(--dn-color-border);
+  margin: 0;
+}
+/* Times column: full-height sibling of the main column so its left
+   border spans top to bottom of the card. Two flex:1 slots vertically
+   align the date with row A in the main column; the bottom slot stays
+   empty until the trip has a known end time. */
+.dn-mockup__tracking-locblock-times {
+  flex-shrink: 0;
+  width: 93px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--dn-color-border);
+}
+.dn-mockup__tracking-locblock-time {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 12px;
+  font-size: 11px; font-weight: 600; line-height: 16px;
+  color: var(--dn-color-primary);
+  text-decoration: underline;
+}
+/* Horizontal divider between the start-time slot and the empty end-time
+   slot. Aligns with the main column's row A / row B divider so the card
+   reads as a 2x2 grid (address|date over placeholder|empty). */
+.dn-mockup__tracking-locblock-time + .dn-mockup__tracking-locblock-time {
+  border-top: 1px solid var(--dn-color-border);
+}
+
+/* Tracking screen looping motion overlays: pulse pin over the live
+   position and three ellipsis dots after the header title. Static
+   styles always declared; activation gated under data-animated below. */
+.dn-mockup__tracking-pulse {
+  position: absolute;
+  top: calc(38% - 30px);
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 5;
+}
+.dn-mockup__tracking-pulse::before,
+.dn-mockup__tracking-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 133, 104, 0.45);
+  transform: scale(1);
+  opacity: 0.9;
+}
+.dn-mockup__tracking-dot { opacity: 0; }
+
+/* 19. ANIMATIONS --------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  .dn-mockup:not([data-animated="false"]) .dn-mockup__route-path {
+    stroke-dasharray: var(--dn-route-len, 240);
+    stroke-dashoffset: var(--dn-route-len, 240);
+    animation: dn-route-draw 6s cubic-bezier(0.65, 0.05, 0.36, 1) infinite;
+  }
+  .dn-mockup:not([data-animated="false"]) .dn-mockup__route-pin--b {
+    opacity: 0;
+    animation: dn-b-pin-fade 6s ease infinite;
+  }
+  .dn-mockup:not([data-animated="false"]) .dn-mockup__trip-card-large {
+    animation: dn-card-mount 200ms ease-out both;
+    animation-delay: calc(var(--card-index, 0) * var(--dn-card-stagger, 60ms));
+  }
+
+  /* Tracking header icon spin */
+  .dn-mockup:not([data-animated="false"]) .dn-mockup__tracking-header-icon svg {
+    animation: dn-tracking-icon-spin 4s linear infinite;
+    transform-origin: 50% 50%;
+  }
+  /* Tracking pulse: two rings offset by half-cycle */
+  .dn-mockup:not([data-animated="false"]) .dn-mockup__tracking-pulse::before {
+    animation: dn-tracking-pulse 2.2s ease-out infinite;
+  }
+  .dn-mockup:not([data-animated="false"]) .dn-mockup__tracking-pulse::after {
+    animation: dn-tracking-pulse 2.2s ease-out infinite;
+    animation-delay: 1.1s;
+  }
+  /* Tracking header dots: staggered three-dot ellipsis */
+  .dn-mockup:not([data-animated="false"]) .dn-mockup__tracking-dot--1 {
+    animation: dn-tracking-dot-1 1.8s ease-in-out infinite;
+  }
+  .dn-mockup:not([data-animated="false"]) .dn-mockup__tracking-dot--2 {
+    animation: dn-tracking-dot-2 1.8s ease-in-out infinite;
+  }
+  .dn-mockup:not([data-animated="false"]) .dn-mockup__tracking-dot--3 {
+    animation: dn-tracking-dot-3 1.8s ease-in-out infinite;
+  }
+
+  @keyframes dn-tracking-icon-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  @keyframes dn-tracking-pulse {
+    0%   { transform: scale(1);  opacity: 0.7; }
+    80%  { transform: scale(16); opacity: 0;   }
+    100% { transform: scale(16); opacity: 0;   }
+  }
+  @keyframes dn-tracking-dot-1 {
+    0%, 12%, 78%, 100% { opacity: 0; }
+    18%, 72%           { opacity: 1; }
+  }
+  @keyframes dn-tracking-dot-2 {
+    0%, 30%, 78%, 100% { opacity: 0; }
+    36%, 72%           { opacity: 1; }
+  }
+  @keyframes dn-tracking-dot-3 {
+    0%, 48%, 78%, 100% { opacity: 0; }
+    54%, 72%           { opacity: 1; }
+  }
+
+  /* Route draw: 1.4s draw, 4s hold, 0.3s fade, instant reset, repeat (~6s) */
+  @keyframes dn-route-draw {
+    0%   { stroke-dashoffset: var(--dn-route-len, 240); opacity: 1; }
+    23%  { stroke-dashoffset: 0; opacity: 1; }  /* 1.4s */
+    88%  { stroke-dashoffset: 0; opacity: 1; }  /* 5.3s */
+    95%  { stroke-dashoffset: 0; opacity: 0; }  /* fade out */
+    99%  { stroke-dashoffset: var(--dn-route-len, 240); opacity: 0; }
+    100% { stroke-dashoffset: var(--dn-route-len, 240); opacity: 1; }
+  }
+
+  /* B-pin: appears 200ms after route draw, fades with cycle */
+  @keyframes dn-b-pin-fade {
+    0%   { opacity: 0; }
+    23%  { opacity: 0; }
+    27%  { opacity: 1; }
+    88%  { opacity: 1; }
+    95%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  /* Card mount: plays once on initial load (not looped).
+   * Per-card stagger uses the inline --card-index custom property set by
+   * the consuming page on each .dn-mockup__trip-card-large (starting at 0).
+   * Default of 0 means a card without an index mounts immediately. Step
+   * size is --dn-card-stagger (default 60ms). */
+  @keyframes dn-card-mount {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* Reduced motion: show fully drawn end state */
+@media (prefers-reduced-motion: reduce) {
+  .dn-mockup__route-path  { stroke-dasharray: none; stroke-dashoffset: 0; }
+  .dn-mockup__route-pin--b { opacity: 1; }
+}
+
+/* data-animated="false": force end state (mirrors reduced-motion) */
+.dn-mockup[data-animated="false"] .dn-mockup__route-path {
+  stroke-dasharray: none;
+  stroke-dashoffset: 0;
+  opacity: 1;
+}
+.dn-mockup[data-animated="false"] .dn-mockup__route-pin--b {
+  opacity: 1;
+}
+
+/* 17. INBOX ZERO --------------------------------------------------- */
+.dn-mockup__review-all[data-disabled="true"] {
+  color: var(--dn-color-disabled-text);
+}
+.dn-mockup__inbox-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 32px;
+  gap: 8px;
+}
+.dn-mockup__inbox-empty-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+}
+.dn-mockup__inbox-empty-title {
+  font-size: 22px; font-weight: 700; line-height: 31px;
+  color: var(--dn-color-content-primary);
+}
+.dn-mockup__inbox-empty-subtitle {
+  font-size: 14px; font-weight: 400; line-height: 20px;
+  color: var(--dn-color-content-secondary);
+}
+
+/* 18. SEND REPORT MODAL -------------------------------------------- */
+.dn-mockup__modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+}
+.dn-mockup__modal {
+  background: var(--dn-color-bg-elevated);
+  border-radius: 16px;
+  width: 100%;
+  padding: 16px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dn-mockup__modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dn-mockup__modal-title {
+  font-size: 20px; font-weight: 700; line-height: 31px;
+  color: var(--dn-color-content-primary);
+}
+.dn-mockup__modal-close {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--dn-color-content-secondary);
+  border-radius: 50%;
+  background: var(--dn-color-bg-neutral);
+  flex-shrink: 0;
+}
+.dn-mockup__modal-close svg { width: 16px; height: 16px; }
+.dn-mockup__modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.dn-mockup__modal-label {
+  font-size: 14px; font-weight: 600; line-height: 20px;
+  color: var(--dn-color-content-primary);
+}
+.dn-mockup__modal-input {
+  height: 44px;
+  border: 1px solid var(--dn-color-border);
+  border-radius: 8px;
+  background: var(--dn-color-bg-elevated);
+}
+.dn-mockup__modal-textarea {
+  min-height: 80px;
+  border: 1px solid var(--dn-color-border);
+  border-radius: 8px;
+  background: var(--dn-color-bg-elevated);
+  padding: 10px 12px;
+}
+.dn-mockup__modal-textarea-placeholder {
+  font-size: 14px; font-weight: 400; line-height: 20px;
+  color: var(--dn-color-content-tertiary);
+}
+.dn-mockup__modal-disclaimer {
+  font-size: 11px; font-weight: 400; line-height: 15px;
+  color: var(--dn-color-content-secondary);
+  margin: 0;
+}
+.dn-mockup__modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.dn-mockup__modal-btn-cancel {
+  font-size: 16px; font-weight: 600; line-height: 24px;
+  color: var(--dn-color-content-secondary);
+  padding: 8px 12px;
+}
+.dn-mockup__modal-btn-send {
+  font-size: 16px; font-weight: 600; line-height: 24px;
+  color: #ffffff;
+  background: var(--dn-color-primary);
+  border-radius: 4px;
+  padding: 8px 20px;
+}
+
+/* 19. LOCK SCREEN -------------------------------------------------- */
+.dn-mockup__stage--lockscreen {
+  background-image: url("../assets/lock-screen/background.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+/* The lock screen dynamic island sits centred at the very top */
+.dn-mockup__dynamic-island--lockscreen {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 126px; height: 37px;
+  background: #000;
+  border-radius: 20px;
+  z-index: 10;
+}
+.dn-mockup__lockscreen-clock {
+  position: absolute;
+  top: 60px;
+  left: 0; right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.dn-mockup__lockscreen-date {
+  font-family: var(--dn-font-status);
+  font-size: 17px; font-weight: 400; line-height: 24px;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.1px;
+}
+.dn-mockup__lockscreen-time {
+  font-family: var(--dn-font-status);
+  font-size: 96px; font-weight: 200; line-height: 1;
+  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: -4px;
+}
+.dn-mockup__lockscreen-notification {
+  position: absolute;
+  top: 244px;
+  left: 17px; right: 17px;
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.dn-mockup__lockscreen-notif-icon {
+  flex-shrink: 0;
+  width: 37px; height: 37px;
+  border-radius: 9px;
+  overflow: hidden;
+}
+.dn-mockup__lockscreen-notif-icon svg {
+  width: 37px; height: 37px;
+  display: block;
+}
+.dn-mockup__lockscreen-notif-content {
+  flex: 1;
+  min-width: 0;
+}
+.dn-mockup__lockscreen-notif-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.dn-mockup__lockscreen-notif-title {
+  font-family: var(--dn-font-status);
+  font-size: 15px; font-weight: 600; line-height: 20px;
+  color: #121212;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dn-mockup__lockscreen-notif-time {
+  font-family: var(--dn-font-status);
+  font-size: 13px; font-weight: 400; line-height: 20px;
+  color: #757575;
+  flex-shrink: 0;
+}
+.dn-mockup__lockscreen-notif-body {
+  font-family: var(--dn-font-status);
+  font-size: 14px; font-weight: 400; line-height: 19px;
+  color: #424242;
+}
+
