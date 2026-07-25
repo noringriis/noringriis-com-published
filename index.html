@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="generator" content="Astro v6.3.3"><meta name="description" content="Product designer. Copenhagen."><link rel="icon" href="/favicon.ico?v=3" sizes="any"><link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3"><link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3"><title>Christopher Noringriis</title><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.CAqDO0tx.js"></script><link rel="stylesheet" href="/_astro/Base.Ckcz5pPt.css">
-<link rel="stylesheet" href="/_astro/index.KmNDxZG2.css">
+<link rel="stylesheet" href="/_astro/index.BLXLbXR5.css">
 <style>@keyframes astroFadeInOut{0%{opacity:1}to{opacity:0}}@keyframes astroFadeIn{0%{opacity:0;mix-blend-mode:plus-lighter}to{opacity:1;mix-blend-mode:plus-lighter}}@keyframes astroFadeOut{0%{opacity:1;mix-blend-mode:plus-lighter}to{opacity:0;mix-blend-mode:plus-lighter}}@keyframes astroSlideFromRight{0%{transform:translate(100%)}}@keyframes astroSlideFromLeft{0%{transform:translate(-100%)}}@keyframes astroSlideToRight{to{transform:translate(100%)}}@keyframes astroSlideToLeft{to{transform:translate(-100%)}}@media(prefers-reduced-motion){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}[data-astro-transition-scope]{animation:none!important}}
 </style><style>[data-astro-transition-scope="astro-qumshslr-1"] { view-transition-name: case-surface; }@layer astro { ::view-transition-old(case-surface) { 
 	animation-duration: 180ms;
@@ -383,6 +383,14 @@
     const box = document.querySelector('[data-logo-loop]');
     if (!box || box.dataset.ready) return;
     box.dataset.ready = '1';
+    // Reduced motion: show the static poster, no video or sprite animation.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const img = document.createElement('img');
+      img.src = '/logo-poster.webp'; img.alt = '';
+      img.style.cssText = 'display:block;width:100%;height:100%;object-fit:contain';
+      box.appendChild(img);
+      return;
+    }
     const ua = navigator.userAgent;
     const isSafari = /^((?!chrome|android|crios|fxios|edg).)*safari/i.test(ua);
     const canWebm = !!document.createElement('video').canPlayType('video/webm; codecs="vp9"');
@@ -395,9 +403,6 @@
       // Inline styles: scoped component CSS does not reach JS-injected nodes.
       v.style.cssText = 'display:block;width:100%;height:100%;object-fit:contain';
       v.src = '/logo-loop.webm';
-      // Encoded at 16s; 0.5x = a calmer ~32s loop to sit near the ticker's drift.
-      v.playbackRate = 0.5;
-      v.addEventListener('loadedmetadata', () => { v.playbackRate = 0.5; }, { once: true });
       box.appendChild(v);
       const play = () => { const p = v.play(); if (p && p.catch) p.catch(() => {}); };
       if (v.readyState >= 2) play();
