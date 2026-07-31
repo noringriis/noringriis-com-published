@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="generator" content="Astro v6.3.3"><meta name="description" content="Product designer. Copenhagen."><link rel="icon" href="/favicon.ico?v=3" sizes="any"><link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3"><link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3"><title>Christopher Noringriis</title><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.CAqDO0tx.js"></script><link rel="stylesheet" href="/_astro/Base.B2mJRXiM.css">
-<link rel="stylesheet" href="/_astro/index.AEp3dRiV.css">
+<link rel="stylesheet" href="/_astro/index.CXY5BfXP.css">
 <style>@keyframes astroFadeInOut{0%{opacity:1}to{opacity:0}}@keyframes astroFadeIn{0%{opacity:0;mix-blend-mode:plus-lighter}to{opacity:1;mix-blend-mode:plus-lighter}}@keyframes astroFadeOut{0%{opacity:1;mix-blend-mode:plus-lighter}to{opacity:0;mix-blend-mode:plus-lighter}}@keyframes astroSlideFromRight{0%{transform:translate(100%)}}@keyframes astroSlideFromLeft{0%{transform:translate(-100%)}}@keyframes astroSlideToRight{to{transform:translate(100%)}}@keyframes astroSlideToLeft{to{transform:translate(-100%)}}@media(prefers-reduced-motion){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}[data-astro-transition-scope]{animation:none!important}}
 </style><style>[data-astro-transition-scope="astro-6p5zps2b-1"] { view-transition-name: case-surface; }@layer astro { ::view-transition-old(case-surface) { 
 	animation-duration: 180ms;
@@ -162,6 +162,9 @@
     let mode = 'auto'; // auto | hold | drag | snap
     let startX = 0, startPos = 0, dragDelta = 0, snapFrom = 0, snapTo = 0, snapStart = 0;
     let keyboardOpen = false, hotTimer = null, lastPx = 0, lastPy = 0;
+    // Set when the pointer leaves the bar mid-drag; the hover teardown waits for
+    // the gesture to finish (see mouseleave and endDrag).
+    let hoverOutPending = false;
 
     const hintEl = document.querySelector('.front__hint');
     let hintTimer = null;
@@ -169,9 +172,22 @@
     const hideHint = () => { clearTimeout(hintTimer); if (hintEl) hintEl.classList.add('is-out'); };
     const showHint = (delay) => { clearTimeout(hintTimer); hintTimer = setTimeout(() => { if (hintEl) hintEl.classList.remove('is-out'); }, delay); };
 
-    const recompute = () => { halfWidth = track.scrollWidth / 2; };
+    // Two position regimes. Contracted, the track is the case list plus a clone
+    // of itself and the marquee wraps modulo halfWidth, so the loop is seamless.
+    // Expanded, the clones are display:none and the position is clamped between
+    // two ends instead. Mixing the two is what made a drag jump: any wrap during
+    // a gesture teleports the track by a whole period.
+    const isExpandedLayout = () =>
+      ticker.classList.contains('is-hot') || ticker.classList.contains('is-open');
+    // Only meaningful while contracted; the clones are hidden when expanded, so
+    // reading it then would halve the period.
+    const recompute = () => { if (!isExpandedLayout()) halfWidth = track.scrollWidth / 2; };
     window.addEventListener('resize', recompute, { signal });
     const wrap = (p) => { if (halfWidth <= 0) return 0; p = p % halfWidth; if (p > 0) p -= halfWidth; return p; };
+    const dragLimit = () => Math.max(0, track.scrollWidth - ticker.clientWidth);
+    const clampPos = (p) => Math.max(-dragLimit(), Math.min(0, p));
+    /** Canonical position for the current regime: wrapped when looping, clamped when not. */
+    const settle = (p) => (isExpandedLayout() ? clampPos(p) : wrap(p));
     const easeOut = (t) => 1 - Math.pow(1 - t, 3);
     const animateTo = (to) => { snapFrom = pos; snapTo = to; snapStart = performance.now(); mode = 'snap'; };
 
@@ -180,11 +196,16 @@
     // expanded the cards are a uniform 480, so these offsets still hold.
     const cardLeft = (i) => cards[i].offsetLeft;
     const indexNearest = (p) => {
-      const w = wrap(p); let best = 0, bestD = Infinity;
-      for (let i = 0; i < cards.length; i++) { const d = Math.abs(w + cardLeft(i)); if (d < bestD) { bestD = d; best = i; } }
-      return best;
+      const w = settle(p); let best = -1, bestD = Infinity;
+      for (let i = 0; i < cards.length; i++) {
+        // A clone is never a snap target while expanded: it is not rendered.
+        if (isExpandedLayout() && cards[i].hasAttribute('data-dup')) continue;
+        const d = Math.abs(w + cardLeft(i));
+        if (d < bestD) { bestD = d; best = i; }
+      }
+      return best === -1 ? 0 : best;
     };
-    const snapToIndex = (i) => animateTo(-cardLeft(i));
+    const snapToIndex = (i) => animateTo(settle(-cardLeft(i)));
     const setFocusedFrom = (p) => { if (!cards.length) return; focusCard(cards[indexNearest(p)]); };
     const clearFocused = () => focusCard(null);
 
@@ -212,16 +233,23 @@
         focusCard(cards[i]);
       }, 100);
     });
-    ticker.addEventListener('mouseleave', () => {
+    const hoverOut = () => {
       const wasHot = ticker.classList.contains('is-hot');
       clearTimeout(hotTimer); hotTimer = null;
       ticker.classList.remove('is-hot');
-      if (mode !== 'drag' && !keyboardOpen) {
+      if (!keyboardOpen) {
         collapseTitles();
         glideTarget = 1; if (mode === 'hold') mode = 'auto';
         showHint(wasHot ? COLLAPSE_MS : 0);   // wait for the bar to collapse before the hint returns
       }
-      requestAnimationFrame(recompute);
+      requestAnimationFrame(recompute); // cards changed width, so did the loop period
+    };
+    ticker.addEventListener('mouseleave', () => {
+      // A drag owns the bar until it ends. Dropping is-hot here would collapse the
+      // cards from 480 to hug-width, recompute would shrink halfWidth, and the
+      // render's wrap() would yank the track back toward the start mid-gesture.
+      if (dragging) { hoverOutPending = true; return; }
+      hoverOut();
     });
 
     // Drag only begins after the pointer moves past a threshold, so a plain
@@ -241,7 +269,9 @@
         ticker.classList.add('is-dragging');
         try { ticker.setPointerCapture(pdId); } catch {}
       }
-      dragDelta = e.clientX - startX; pos = startPos + dragDelta;
+      // settle() keeps pos canonical for the current regime, so an expanded drag
+      // stops at the ends instead of running past them into a wrap.
+      dragDelta = e.clientX - startX; pos = settle(startPos + dragDelta);
     });
     const endDrag = () => {
       pointerActive = false;
@@ -249,8 +279,16 @@
       dragging = false;
       didDrag = true; // suppress the click that follows a real drag
       ticker.classList.remove('is-dragging');
-      // Snap to the card nearest the drag-end position (widths are variable).
-      snapToIndex(indexNearest(pos));
+      if (hoverOutPending) {
+        // The pointer left mid-drag: collapse now, then measure and snap in the
+        // layout we actually land in, since card offsets move with the collapse.
+        hoverOutPending = false;
+        hoverOut();
+        requestAnimationFrame(() => { recompute(); snapToIndex(indexNearest(pos)); });
+      } else {
+        // Snap to the card nearest the drag-end position (widths are variable).
+        snapToIndex(indexNearest(pos));
+      }
       glideTarget = (ticker.matches(':hover') || keyboardOpen) ? 0 : 1;
     };
     ticker.addEventListener('pointerup', endDrag);
@@ -320,11 +358,12 @@
       else if (mode === 'snap') {
         const t = Math.min(1, (now - snapStart) / SNAP_MS);
         pos = snapFrom + (snapTo - snapFrom) * easeOut(t);
-        if (t >= 1) { pos = wrap(snapTo); mode = (keyboardOpen || glideTarget === 0) ? 'hold' : 'auto'; }
+        if (t >= 1) { pos = settle(snapTo); mode = (keyboardOpen || glideTarget === 0) ? 'hold' : 'auto'; }
       }
       else if (mode === 'hold') { /* paused */ }
+      // Idle drift only runs contracted, so this branch can wrap unconditionally.
       else if (!reduce) { speed += (glideTarget - speed) * (1 - Math.exp(-dt / TAU)); pos = wrap(pos - (halfWidth / GLIDE_MS) * dt * speed); }
-      track.style.transform = `translateX(${wrap(pos)}px)`;
+      track.style.transform = `translateX(${settle(pos)}px)`;
       rafId = requestAnimationFrame(step);
     };
     recompute();
