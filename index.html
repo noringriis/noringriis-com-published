@@ -479,15 +479,28 @@
       // Safari sprite driven by a single JS clock so column and row always come
       // from the same frame index. CSS steps() animates background-position-x and
       // -y as two separate timelines, which Safari desyncs at row boundaries and
-      // reads as jumping. 24x32 grid, 768 frames, 32s, shown at 80px per frame.
-      const COLS = 24, ROWS = 32, FRAMES = COLS * ROWS, DUR = 32000, FW = 80, FH = 80;
-      box.style.cssText = "width:100%;height:100%;background-image:url('/logo-loop.webp');background-repeat:no-repeat;background-size:" + (COLS * FW) + "px " + (ROWS * FH) + "px";
+      // reads as jumping. 24x32 grid, 768 frames, 32s, scaled to the box.
+      const COLS = 24, ROWS = 32, FRAMES = COLS * ROWS, DUR = 32000;
+      box.style.cssText = "width:100%;height:100%;background-image:url('/logo-loop.webp');background-repeat:no-repeat";
+      // Frame size follows the box rather than the sprite's native 80px. Hard
+      // coding 80 cropped every frame to the box's top-left corner as soon as
+      // --logo-size moved off 80, which read as the logo being cut off.
+      // The source frames are square, so a square box keeps the aspect.
+      let fw = 80, fh = 80;
+      const sizeSprite = () => {
+        const w = box.clientWidth, h = box.clientHeight;
+        if (!w || !h) return; // not laid out yet; keep the last good size
+        fw = w; fh = h;
+        box.style.backgroundSize = (COLS * fw) + 'px ' + (ROWS * fh) + 'px';
+      };
+      sizeSprite();
+      window.addEventListener('resize', sizeSprite);
       let start = 0;
       const tick = (t) => {
         if (!start) start = t;
         const f = Math.floor(((t - start) / DUR) * FRAMES) % FRAMES;
         const c = f % COLS, r = (f / COLS) | 0;
-        box.style.backgroundPosition = (-c * FW) + 'px ' + (-r * FH) + 'px';
+        box.style.backgroundPosition = (-c * fw) + 'px ' + (-r * fh) + 'px';
         window.__logoRaf = requestAnimationFrame(tick);
       };
       window.__logoRaf = requestAnimationFrame(tick);
