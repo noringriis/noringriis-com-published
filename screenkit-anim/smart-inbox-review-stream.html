@@ -30,6 +30,12 @@
       padding: 0 !important;
       border-radius: 0 !important;
     }
+    /* Case embed: no phase captions. Phone uses the height that was reserved
+       for the two-line subtitle so it fills the 4:3 frame. */
+    body.is-preview .anim-caption { display: none !important; }
+    body.is-preview .anim-canvas {
+      --phone-w: calc((1280px - 2 * var(--pad-y, 48px)) * 393 / 829);
+    }
   </style>
   <script>
     if (new URLSearchParams(window.location.search).get('preview') === '1') {
