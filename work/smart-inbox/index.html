@@ -392,11 +392,19 @@
 
     // Drag only begins after the pointer moves past a threshold, so a plain
     // click is never captured by the ticker and reaches the card link.
-    let pointerActive = false, dragging = false, didDrag = false, downX = 0, downPos = 0, pdId = null;
+    // Drag-end timestamps, not consumed-on-next-click booleans: a real touch
+    // drag usually fires NO click at all (iOS suppresses it), so a sticky flag
+    // survives the gesture and silently eats — or worse, un-preventDefaults —
+    // the user's NEXT tap. The ghost click a drag does produce lands within
+    // milliseconds of pointerup, so a short window after the gesture is the
+    // correct suppressor and self-expires.
+    const DRAG_CLICK_SUPPRESS_MS = 400;
+    let dragEndedAt = -Infinity, sheetDragEndedAt = -Infinity;
+    let pointerActive = false, dragging = false, downX = 0, downPos = 0, pdId = null;
     ticker.addEventListener('pointerdown', (e) => {
       if (isMobile()) return; // no horizontal drag on the mobile sheet
       if (e.button !== 0) return;
-      pointerActive = true; dragging = false; didDrag = false; downX = e.clientX; downPos = pos; pdId = e.pointerId;
+      pointerActive = true; dragging = false; downX = e.clientX; downPos = pos; pdId = e.pointerId;
     });
     ticker.addEventListener('pointermove', (e) => {
       lastPx = e.clientX; lastPy = e.clientY;
@@ -415,7 +423,7 @@
       pointerActive = false;
       if (!dragging) return; // tap/click: let the click handler open the case
       dragging = false;
-      didDrag = true; // suppress the click that follows a real drag
+      dragEndedAt = performance.now(); // suppress the ghost click this drag may fire
       ticker.classList.remove('is-dragging');
       if (hoverOutPending) {
         // The pointer left mid-drag: collapse now, then measure and snap in the
@@ -456,19 +464,18 @@
 
     /* ---- Swipe-to-close: drag the handle down to dismiss the mobile sheet ----
        A separate gesture from the horizontal marquee drag above (that one is
-       dead on mobile, isMobile() bails it out), so it gets its own did-drag
-       flag rather than sharing didDrag. */
-    let sheetDidDrag = false;
+       dead on mobile, isMobile() bails it out), so it gets its own drag-end
+       timestamp rather than sharing dragEndedAt. */
     if (sheetOn) {
       const DISMISS_DISTANCE = 90;   // px pulled down before a release commits to closing
       const DISMISS_VELOCITY = 0.5;  // px/ms; a quick flick can commit well under the distance
       const handle = document.querySelector('[data-ticker-handle]');
-      let sheetDragging = false, sheetDragId = null, sheetStartY = 0, sheetStartT = 0, sheetDy = 0;
+      let sheetDragging = false, sheetMoved = false, sheetDragId = null, sheetStartY = 0, sheetStartT = 0, sheetDy = 0;
       const resetSheetTransform = () => { ticker.style.transition = ''; ticker.style.transform = ''; };
       if (handle) {
         handle.addEventListener('pointerdown', (e) => {
           if (!isMobile() || !keyboardOpen) return;
-          sheetDragging = true; sheetDidDrag = false; sheetDragId = e.pointerId;
+          sheetDragging = true; sheetMoved = false; sheetDragId = e.pointerId;
           sheetStartY = e.clientY; sheetStartT = performance.now(); sheetDy = 0;
           ticker.classList.add('is-dragging-sheet');
           try { handle.setPointerCapture(sheetDragId); } catch {}
@@ -476,12 +483,13 @@
         handle.addEventListener('pointermove', (e) => {
           if (!sheetDragging) return;
           sheetDy = Math.max(0, e.clientY - sheetStartY);
-          if (sheetDy > 4) sheetDidDrag = true; // suppress the click that follows a real drag
+          if (sheetDy > 4) sheetMoved = true;
           ticker.style.transform = `translateY(${sheetDy}px)`;
         });
         const endSheetDrag = () => {
           if (!sheetDragging) return;
           sheetDragging = false;
+          if (sheetMoved) sheetDragEndedAt = performance.now(); // suppress this drag's ghost click, if it fires one
           ticker.classList.remove('is-dragging-sheet');
           const elapsed = Math.max(1, performance.now() - sheetStartT);
           const velocity = sheetDy / elapsed; // px/ms
@@ -534,8 +542,16 @@
     // Click anywhere in a card to open it. Mobile: tap the collapsed bar opens
     // the sheet first. Desktop: only when expanded (hover/keyboard).
     ticker.addEventListener('click', (e) => {
-      if (didDrag) { didDrag = false; return; } // ignore the click after a drag
-      if (sheetDidDrag) { sheetDidDrag = false; return; } // ignore the click after a sheet drag
+      // Ghost-click suppression, by recency rather than a sticky flag: a real
+      // touch drag often fires no click at all, and a flag left armed would
+      // hijack the user's NEXT tap — returning early without preventDefault,
+      // which let a tap on the collapsed pill fall through to its title anchor
+      // and navigate (the "ticker, case, ticker, case" alternation on iOS).
+      if (performance.now() - dragEndedAt < DRAG_CLICK_SUPPRESS_MS ||
+          performance.now() - sheetDragEndedAt < DRAG_CLICK_SUPPRESS_MS) {
+        e.preventDefault();
+        return;
+      }
       // Sheet header close: bail before the card lookup, or the tap would fall
       // through to the row underneath and navigate.
       if (e.target.closest('[data-ticker-close]')) { e.preventDefault(); close(); return; }
