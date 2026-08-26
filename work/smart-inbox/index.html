@@ -571,9 +571,10 @@
         return;
       }
       if (e.target.closest('a')) return; // the title link handles its own click
-      // Mobile sheet: only the title link opens a case. The rest of the row
-      // (image, impact line) is just the drag/scroll surface, not a target.
-      if (isMobile()) return;
+      // Whole row is the target, image included — on the mobile sheet as much
+      // as on desktop. Only the collapsed pill refuses to navigate, and it
+      // never reaches here: the !isExpanded() branch above opens the sheet and
+      // returns first.
       const card = e.target.closest('.cases-ticker-card');
       const link = card && card.querySelector('.cases-ticker-title');
       if (link) link.click(); // route via the anchor so the view transition runs
