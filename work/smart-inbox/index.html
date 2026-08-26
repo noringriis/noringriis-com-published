@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="generator" content="Astro v6.4.8"><meta name="description" content="Smart Inbox at Driversnote. A 99-trip review backlog split into Ready and Needs Review, validated across 96 usability testers before launch."><link rel="icon" href="/favicon.ico?v=3" sizes="any"><link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3"><link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3"><title>From a 99+ Trip Backlog to an Inbox You Can Clear</title><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.CAqDO0tx.js"></script><link rel="stylesheet" href="/_astro/CasesTicker.B7InuYVW.css"><link rel="stylesheet" href="/_astro/CaseSection.Bqf5emP6.css"><link rel="stylesheet" href="/_astro/smart-inbox.BDZNSLmW.css"><link rel="stylesheet" href="/_astro/MacNotification.B19_Q8WO.css"><link rel="stylesheet" href="/_astro/ProcessTimeline.CaCYNrlv.css"><style>[data-astro-transition-scope="astro-qatri67x-1"] { view-transition-name: case-surface; }@layer astro { ::view-transition-old(case-surface) { 
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="generator" content="Astro v6.4.8"><meta name="description" content="Smart Inbox at Driversnote. A 99-trip review backlog split into Ready and Needs Review, validated across 96 usability testers before launch."><link rel="icon" href="/favicon.ico?v=3" sizes="any"><link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3"><link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3"><title>From a 99+ Trip Backlog to an Inbox You Can Clear</title><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.CAqDO0tx.js"></script><link rel="stylesheet" href="/_astro/CasesTicker.DT8Hpdov.css"><link rel="stylesheet" href="/_astro/CaseSection.Bqf5emP6.css"><link rel="stylesheet" href="/_astro/smart-inbox.BDZNSLmW.css"><link rel="stylesheet" href="/_astro/MacNotification.B19_Q8WO.css"><link rel="stylesheet" href="/_astro/ProcessTimeline.CaCYNrlv.css"><style>[data-astro-transition-scope="astro-qatri67x-1"] { view-transition-name: case-surface; }@layer astro { ::view-transition-old(case-surface) { 
 	animation-duration: 180ms;
 	animation-timing-function: cubic-bezier(0.76, 0, 0.24, 1);
 	animation-fill-mode: both;
@@ -442,12 +442,31 @@
     ticker.addEventListener('dragstart', (e) => e.preventDefault());
     window.addEventListener('pointerup', endDrag, { signal });
 
+    /* ---- Warm the case pages the sheet is about to offer ----
+       The router prefetches on hover, which a phone never fires, so a tap pays
+       for the whole page fetch (46-106KB of HTML) before the view transition
+       can start — the 300-500ms lag between tapping a thumbnail and the case
+       appearing. Opening the sheet is the intent signal, so fetch them then:
+       by the time a row is tapped the HTML is in cache and the tap only costs
+       the transition. A plain fetch rather than <link rel=prefetch> because
+       Safari's support for that hint is unreliable, and the router navigates
+       with fetch() anyway, so this lands in the same HTTP cache it reads. */
+    const warmed = new Set();
+    const warmCases = () => {
+      cards.forEach((c) => {
+        const a = c.querySelector('.cases-ticker-title');
+        if (!a || !a.href || warmed.has(a.href)) return; // clones share a href
+        warmed.add(a.href);
+        fetch(a.href, { credentials: 'same-origin', priority: 'low' }).catch(() => {});
+      });
+    };
+
     const open = () => {
       // Nearest card in the current (collapsed) layout, before expanding.
       const i = indexNearest(pos);
       keyboardOpen = true; closedAt = 0; ticker.classList.add('is-open'); markExpanding();
       // CSS turns is-open into the vertical sheet; show a static impact per row.
-      if (isMobile()) { cards.forEach((c) => { if (!c._typed) return; setArrow(c, c._impacts[0]); c._typed.textContent = (c._impacts[0] && c._impacts[0].label) || ''; }); return; }
+      if (isMobile()) { warmCases(); cards.forEach((c) => { if (!c._typed) return; setArrow(c, c._impacts[0]); c._typed.textContent = (c._impacts[0] && c._impacts[0].label) || ''; }); return; }
       glideTarget = 0; hideHint(); expandTitles();
       recompute();
       void track.offsetWidth; // expanded layout before measuring
